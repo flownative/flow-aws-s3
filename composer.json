@@ -1,0 +1,25 @@
+{
+  "name": "flownative/aws-s3",
+  "type": "typo3-flow-package",
+  "description": "",
+  "authors": [
+    {
+      "name": "Robert Lemke",
+      "email": "robert@flownative.com",
+      "homepage": "http://flownative.com",
+      "role": "Developer"
+    }
+  ],
+  "license": [
+    "MIT"
+  ],
+  "require": {
+    "typo3/flow": "*",
+    "aws/aws-sdk-php": "2.8.*"
+  },
+  "autoload": {
+    "psr-0": {
+      "Flownative\\Aws\\S3": "Classes"
+    }
+  }
+}
