@@ -63,6 +63,11 @@ class S3Storage implements WritableStorageInterface {
 	protected $resourceRepository;
 
 	/**
+	 * @var S3Client
+	 */
+	protected $s3Client;
+
+	/**
 	 * Constructor
 	 *
 	 * @param string $name Name of this storage instance, according to the resource settings
@@ -82,7 +87,7 @@ class S3Storage implements WritableStorageInterface {
 					break;
 				default:
 					if ($value !== NULL) {
-						throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource RackspaceStorage. Please check your settings.', $key, $name), 1362500689);
+						throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource S3Storage. Please check your settings.', $key, $name), 1428928229);
 					}
 			}
 		}
@@ -107,6 +112,15 @@ class S3Storage implements WritableStorageInterface {
 	 */
 	public function getBucketName() {
 		return $this->bucketName;
+	}
+
+	/**
+	 * Returns the S3 object key prefix
+	 *
+	 * @return string
+	 */
+	public function getKeyPrefix() {
+		return $this->keyPrefix;
 	}
 
 	/**
