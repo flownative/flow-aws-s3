@@ -6,6 +6,7 @@ namespace Flownative\Aws\S3;
  *                                                                        *
  *                                                                        */
 
+use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Resource\Collection;
@@ -204,12 +205,17 @@ class S3Target implements TargetInterface {
 			if ($storage->getBucketName() === $this->bucketName) {
 				throw new Exception(sprintf('Could not publish resource with SHA1 hash %s of collection %s because the source and target S3 bucket is the same.', $resource->getSha1(), $collection->getName()), 1428929563);
 			}
-			$this->s3Client->copyObject(array(
-				'ACL' => 'public-read',
-				'Bucket' => $this->bucketName,
-				'CopySource' => urlencode($storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1()),
-				'Key' => $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource)
-			));
+			try {
+				$sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
+				$this->s3Client->copyObject(array(
+					'ACL' => 'public-read',
+					'Bucket' => $this->bucketName,
+					'CopySource' => urlencode($sourceObjectArn),
+					'Key' => $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource)
+				));
+			} catch (S3Exception $e) {
+				throw new Exception(sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage()), 1428999574);
+			}
 		} else {
 			$sourceStream = $collection->getStreamByResource($resource);
 			if ($sourceStream === FALSE) {

@@ -190,7 +190,7 @@ class S3Storage implements WritableStorageInterface {
 			'Body' => $content,
 			'ContentLength' => $resource->getFileSize(),
 			'ContentDisposition' => 'attachment; filename=' . urlencode($filename),
-			'Key' => $sha1Hash
+			'Key' => $this->keyPrefix . $sha1Hash
 		));
 
 		return $resource;
