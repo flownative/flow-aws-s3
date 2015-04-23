@@ -7,6 +7,7 @@ namespace Flownative\Aws\S3\Command;
  *                                                                        */
 
 use Aws\S3\Exception\NoSuchBucketException;
+use Aws\S3\Model\ClearBucket;
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Cli\CommandController;
@@ -69,6 +70,26 @@ class S3CommandController extends CommandController {
 		}
 
 		$this->output->outputTable($tableRows, $headerRow);
+	}
+
+	/**
+	 * Removes all objects from a bucket
+	 *
+	 * This command deletes all objects (files) of the given bucket.
+	 *
+	 * @param string $bucket Name of the bucket
+	 * @return void
+	 */
+	public function flushBucketCommand($bucket) {
+		try {
+			$s3Client = S3Client::factory();
+			$clearBucket = new ClearBucket($s3Client, $bucket);
+			$clearBucket->clear();
+		} catch(\Exception $e) {
+			$this->outputLine($e->getMessage());
+			$this->quit(1);
+		}
+		$this->outputLine('Successfully flushed bucket %s.', array($bucket));
 	}
 
 	/**

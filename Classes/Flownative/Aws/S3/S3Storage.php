@@ -68,6 +68,12 @@ class S3Storage implements WritableStorageInterface {
 	protected $s3Client;
 
 	/**
+	 * @Flow\Inject
+	 * @var \TYPO3\Flow\Log\SystemLoggerInterface
+	 */
+	protected $systemLogger;
+
+	/**
 	 * Constructor
 	 *
 	 * @param string $name Name of this storage instance, according to the resource settings
@@ -175,8 +181,7 @@ class S3Storage implements WritableStorageInterface {
 	public function importResourceFromContent($content, $collectionName) {
 		$sha1Hash = sha1($content);
 		$md5Hash = md5($content);
-
-		$filename = $sha1Hash; // FIXME
+		$filename = $sha1Hash;
 
 		$resource = new Resource();
 		$resource->setFilename($filename);
@@ -189,7 +194,7 @@ class S3Storage implements WritableStorageInterface {
 			'Bucket' => $this->bucketName,
 			'Body' => $content,
 			'ContentLength' => $resource->getFileSize(),
-			'ContentDisposition' => 'attachment; filename=' . urlencode($filename),
+			'ContentType' => $resource->getMediaType(),
 			'Key' => $this->keyPrefix . $sha1Hash
 		));
 
@@ -237,7 +242,7 @@ class S3Storage implements WritableStorageInterface {
 			'Bucket' => $this->bucketName,
 			'Body' => fopen($newSourcePathAndFilename, 'rb'),
 			'ContentLength' => $resource->getFileSize(),
-			'ContentDisposition' => 'attachment; filename=' . urlencode($originalFilename),
+			'ContentType' => $resource->getMediaType(),
 			'Key' => $this->keyPrefix . $sha1Hash
 		));
 
@@ -339,13 +344,20 @@ class S3Storage implements WritableStorageInterface {
 		$resource->setSha1($sha1Hash);
 		$resource->setMd5($md5Hash);
 
+		$objectName = $this->keyPrefix . $sha1Hash;
+		$options = array(
+			'Bucket' => $this->bucketName,
+			'Body' => fopen($temporaryPathAndFilename, 'rb'),
+			'ContentLength' => $resource->getFileSize(),
+			'ContentType' => $resource->getMediaType(),
+			'Key' => $objectName
+		);
+
 		if (!$this->s3Client->doesObjectExist($this->bucketName, $this->keyPrefix . $sha1Hash)) {
-			$this->s3Client->putObject(array(
-				'Bucket' => $this->bucketName,
-				'Body' => fopen($temporaryPathAndFilename, 'rb'),
-				'ContentLength' => $resource->getFileSize(),
-				'Key' => $this->keyPrefix . $sha1Hash
-			));
+			$this->s3Client->putObject($options);
+			$this->systemLogger->log(sprintf('Successfully imported resource as object "%s" into bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $resource->getMd5() ?: 'unknown'), LOG_INFO);
+		} else {
+			$this->systemLogger->log(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName), LOG_INFO);
 		}
 
 		return $resource;
