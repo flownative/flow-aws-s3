@@ -63,6 +63,12 @@ class S3Target implements TargetInterface {
 	protected $s3Client;
 
 	/**
+	 * @Flow\InjectConfiguration("profiles.default")
+	 * @var array
+	 */
+	protected $s3DefaultProfile;
+
+	/**
 	 * @Flow\Inject
 	 * @var \TYPO3\Flow\Log\SystemLoggerInterface
 	 */
@@ -105,8 +111,17 @@ class S3Target implements TargetInterface {
 					}
 			}
 		}
+	}
 
-		$this->s3Client = S3Client::factory();
+	/**
+	 * Initialize the S3 Client
+	 *
+	 * @return void
+	 */
+	public function initializeObject() {
+		$clientOptions = $this->s3DefaultProfile;
+
+		$this->s3Client = S3Client::factory($clientOptions);
 		$this->s3Client->registerStreamWrapper();
 	}
 

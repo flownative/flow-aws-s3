@@ -1,0 +1,9 @@
+Flownative:
+  Aws:
+    S3:
+      profiles:
+        # Default credentials and client options
+        # Override these in your settings with real values
+        default:
+          key: 'ABCD123EFG456HIJ7890'
+          secret: 'aBc123DEf456GHi789JKlMNopqRsTuVWXyz12345'
