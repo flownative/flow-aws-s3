@@ -3,10 +3,8 @@ namespace Flownative\Aws\S3\Command;
 
 /*                                                                        *
  * This script belongs to the package "Flownative.Aws.S3".                *
- *                                                                        *
  *                                                                        */
 
-use Aws\S3\Exception\NoSuchBucketException;
 use Aws\S3\Model\ClearBucket;
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
@@ -20,6 +18,12 @@ use TYPO3\Flow\Cli\CommandController;
 class S3CommandController extends CommandController {
 
 	/**
+	 * @Flow\InjectConfiguration("profiles.default")
+	 * @var array
+	 */
+	protected $s3DefaultProfile;
+
+	/**
 	 * Checks the connection
 	 *
 	 * This command checks if the configured credentials and connectivity allows for
@@ -29,10 +33,8 @@ class S3CommandController extends CommandController {
 	 */
 	public function connectCommand() {
 		try {
-			$s3Client = S3Client::factory();
-			$s3Client->headBucket(array('Bucket' => 'some-dummy-bucket'));
-		}
-		catch (NoSuchBucketException $e) {
+			$s3Client = S3Client::factory($this->s3DefaultProfile);
+			$s3Client->listBuckets();
 		}
 		catch (\Exception $e) {
 			$this->outputLine($e->getMessage());
@@ -51,7 +53,7 @@ class S3CommandController extends CommandController {
 	 */
 	public function listBucketsCommand() {
 		try {
-			$s3Client = S3Client::factory();
+			$s3Client = S3Client::factory($this->s3DefaultProfile);
 			$result = $s3Client->listBuckets();
 		} catch(\Exception $e) {
 			$this->outputLine($e->getMessage());
@@ -82,7 +84,7 @@ class S3CommandController extends CommandController {
 	 */
 	public function flushBucketCommand($bucket) {
 		try {
-			$s3Client = S3Client::factory();
+			$s3Client = S3Client::factory($this->s3DefaultProfile);
 			$clearBucket = new ClearBucket($s3Client, $bucket);
 			$clearBucket->clear();
 		} catch(\Exception $e) {
@@ -115,7 +117,7 @@ class S3CommandController extends CommandController {
 		}
 
 		try {
-			$s3Client = S3Client::factory();
+			$s3Client = S3Client::factory($this->s3DefaultProfile);
 			$s3Client->putObject(array(
 				'Key' => $key,
 				'Bucket' => $bucket,
