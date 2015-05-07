@@ -51,6 +51,11 @@ class S3Target implements TargetInterface {
 	protected $corsAllowOrigin = '*';
 
 	/**
+	 * @var string
+	 */
+	protected $baseUri;
+
+	/**
 	 * Internal cache for known storages, indexed by storage name
 	 *
 	 * @var array<\TYPO3\Flow\Resource\Storage\StorageInterface>
@@ -104,6 +109,9 @@ class S3Target implements TargetInterface {
 					break;
 				case 'corsAllowOrigin':
 					$this->corsAllowOrigin = $value;
+					break;
+				case 'baseUri':
+					$this->baseUri = $value;
 					break;
 				default:
 					if ($value !== NULL) {
@@ -187,7 +195,11 @@ class S3Target implements TargetInterface {
 					'MetadataDirective' => 'REPLACE',
 					'Key' => $objectName
 				);
-				$this->s3Client->copyObject($options);
+				try {
+					$this->s3Client->copyObject($options);
+				} catch (S3Exception $e) {
+					throw new Exception(sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName , $e->getMessage()), 1431009234);
+				}
 				$this->systemLogger->log(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName), LOG_DEBUG);
 				unset($obsoleteObjects[$this->getRelativePublicationPathAndFilename($object)]);
 			}
@@ -282,7 +294,11 @@ class S3Target implements TargetInterface {
 	 * @throws Exception
 	 */
 	public function getPublicPersistentResourceUri(Resource $resource) {
-		return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
+		if ($this->baseUri != '') {
+			return $this->baseUri . $this->getRelativePublicationPathAndFilename($resource);
+		} else {
+			return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
+		}
 	}
 
 	/**
