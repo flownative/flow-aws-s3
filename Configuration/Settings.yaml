@@ -5,6 +5,8 @@ Flownative:
         # Default credentials and client options
         # Override these in your settings with real values
         default:
+          # Don't use the old signature v2 - certain regions don't support them
+          signature: 'v4'
           credentials:
             key: 'ABCD123EFG456HIJ7890'
             secret: 'aBc123DEf456GHi789JKlMNopqRsTuVWXyz12345'
