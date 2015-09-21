@@ -337,9 +337,9 @@ class S3Target implements TargetInterface {
 	 */
 	protected function getRelativePublicationPathAndFilename(ResourceMetaDataInterface $object) {
 		if ($object->getRelativePublicationPath() !== '') {
-			$pathAndFilename = $object->getRelativePublicationPath() . $object->getFilename();
+			$pathAndFilename = $object->getRelativePublicationPath() . rawurlencode($object->getFilename());
 		} else {
-			$pathAndFilename = $object->getSha1() . '/' . $object->getFilename();
+			$pathAndFilename = $object->getSha1() . '/' . rawurlencode($object->getFilename());
 		}
 		return $pathAndFilename;
 	}
