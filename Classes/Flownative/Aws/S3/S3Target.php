@@ -260,7 +260,7 @@ class S3Target implements TargetInterface {
 				throw new Exception(sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage()), 1428999574);
 			}
 		} else {
-			$sourceStream = $collection->getStreamByResource($resource);
+			$sourceStream = $resource->getStream();
 			if ($sourceStream === FALSE) {
 				throw new Exception(sprintf('Could not publish resource with SHA1 hash %s of collection %s because there seems to be no corresponding data in the storage.', $resource->getSha1(), $collection->getName()), 1428929649);
 			}
@@ -319,10 +319,11 @@ class S3Target implements TargetInterface {
 		try {
 			$this->s3Client->upload($this->bucketName, $objectName, $sourceStream, 'public-read', $options);
 			$this->systemLogger->log(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'), LOG_DEBUG);
-			fclose($sourceStream);
 		} catch(\Exception $e) {
 			$this->systemLogger->log(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()), LOG_DEBUG);
-			fclose($sourceStream);
+			if (is_resource($sourceStream)) {
+				fclose($sourceStream);
+			}
 			throw $e;
 		}
 	}
