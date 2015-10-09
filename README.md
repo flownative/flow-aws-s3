@@ -1,3 +1,9 @@
+![License][license]
+![Packagist][packagist]
+
+[license]: https://img.shields.io/github/license/flownative/aws-s3.svg
+[packagist]: https://img.shields.io/packagist/v/flownative/aws-s3.svg
+
 # AWS S3 Adaptor for Neos 2.x and Flow 3.x
 
 This [Flow](https://flow.typo3.org) package allows you to store assets (resources) in [Amazon's S3](https://aws.amazon.com/s3/) and publish resources to S3 or [Cloudfront](https://aws.amazon.com/cloudfront/). Because [Neos CMS](https://www.neos.io) is using Flow's resource management under the hood, this adaptor also works nicely for all kinds of assets in Neos.
