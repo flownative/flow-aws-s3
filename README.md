@@ -5,7 +5,9 @@
 
 # AWS S3 Adaptor for Neos 2.x and Flow 3.x
 
-This [Flow](https://flow.typo3.org) package allows you to store assets (resources) in [Amazon's S3](https://aws.amazon.com/s3/) and publish resources to S3 or [Cloudfront](https://aws.amazon.com/cloudfront/). Because [Neos CMS](https://www.neos.io) is using Flow's resource management under the hood, this adaptor also works nicely for all kinds of assets in Neos.
+This [Flow](https://flow.typo3.org) package allows you to store assets (resources) in [Amazon's S3](https://aws.amazon.com/s3/)
+and publish resources to S3 or [Cloudfront](https://aws.amazon.com/cloudfront/). Because [Neos CMS](https://www.neos.io) is
+using Flow's resource management under the hood, this adaptor also works nicely for all kinds of assets in Neos.
 
 ## Key Features
 
@@ -43,18 +45,88 @@ Flownative:
           region: 'eu-central-1'
 ```
 
-You can test your settings by executing the `connect` command:
+You can test your settings by executing the `connect` command. If you restricted access to a particular sub path of
+a bucket, you must specify the bucket and key prefix: 
 
 ```bash
-    $ ./flow s3:connect
-    OK
+    $ ./flow s3:connect --bucket test.storage.net --prefix sites/s3-test/
+    Access list of objects in bucket "test.storage.neos" with key prefix "sites/s3-test/" ...
+    Writing test object into bucket (arn:aws:s3:::test.storage.neos/sites/s3-test/Flownative.Aws.S3.ConnectionTest.txt) ...
+    Deleting test object from bucket ...
+    OK    
 ```
+
+Note that it does make a difference if you specify the prefix with a leading slash "/" or without, because the corresponding
+policy must match the pattern correctly, as you can see in the next section.
 
 ## IAM Setup
 
-tbd.
+It is best practice to create a user through AWS' Identity and Access Management which is exclusively used for your
+Flow or Neos instance to communicate with S3. This user needs minimal access rights, which can be defined either by
+an inline policy or through membership at a group which has the respective policy applied.
 
-## Publish Assets to S3 / Cloufront
+The following inline policy provides the necessary rights to the user to execute all necessary operations for asset
+management in Neos. It is designed to share one bucket with multiple sites / users and only grants access to a specific
+sub path within your bucket. By using using the username as a path segment through a [policy variable](http://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_variables.html),
+this policy can be reused across multiple users (for example by providing it in a IAM Group).
+
+For more detail on the rights used in the policy, Amazon provides detailed information about [how S3 authorizes a request
+for a bucket operation](http://docs.aws.amazon.com/AmazonS3/latest/dev/access-control-auth-workflow-bucket-operation.html).
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketLocation"
+            ],
+            "Resource": "arn:aws:s3:::*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::test.storage.neos",
+                "arn:aws:s3:::test.target.neos"
+            ],
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": [
+                        "",
+                        "sites/",
+                        "sites/${aws:username}/"
+                    ]
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectExtended",
+                "s3:GetObjectTorrent",
+                "s3:PutObject",
+                "s3:PutObjectInline",
+                "s3:DeleteObject",
+                "s3:AbortMultipartUpload",
+                "s3:ListMultipartUploadParts",
+                "s3:GetObjectAcl",
+                "s3:PutObjectAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::test.storage.neos/*",
+                "arn:aws:s3:::test.target.neos/*"
+            ]
+        }
+    ]
+}
+```
+
+## Publish Assets to S3 / Cloudfront
 
 Once the connector package is in place, you add a new publishing target which uses that connect and assign this target
 to your collection.
@@ -71,12 +143,13 @@ to your collection.
           cloudFrontPersistentResourcesTarget:
             target: 'Flownative\Aws\S3\S3Target'
             targetOptions:
-              bucket: 'media.example.com'
+              bucket: 'target.neos.example.com'
               keyPrefix: '/'
               baseUri: 'https://abc123def456.cloudfront.net/'
 ```
 
-Since the new publishing target will be empty initially, you need to publish your assets to the new target by using the  ``resource:publish`` command:
+Since the new publishing target will be empty initially, you need to publish your assets to the new target by using the
+``resource:publish`` command:
 
 ```bash
     path$ ./flow resource:publish
@@ -86,9 +159,11 @@ This command will upload your files to the target and use the calculated remote 
 
 ## Switching the Storage of a Collection
 
-If you want to migrate from your default local filesystem storage to a remote storage, you need to copy all your existing persistent resources to that new storage and use that storage afterwards by default.
+If you want to migrate from your default local filesystem storage to a remote storage, you need to copy all your existing
+persistent resources to that new storage and use that storage afterwards by default.
 
-You start by adding a new storage with the S3 connector to your configuration. As you might want also want to serve your assets by the remote storage system, you also add a target that contains your published resources.
+You start by adding a new storage with the S3 connector to your configuration. As you might want also want to serve your
+assets by the remote storage system, you also add a target that contains your published resources.
 
 ```yaml
 
@@ -100,25 +175,30 @@ You start by adding a new storage with the S3 connector to your configuration. A
             storage: 'Flownative\Aws\S3\S3Storage'
             storageOptions:
               bucket: 'storage.neos.example.com'
-              keyPrefix: 'mywebsite.com/'
+              keyPrefix: 'sites/wwwexamplecom/'
         targets:
           s3PersistentResourcesTarget:
             target: 'Flownative\Aws\S3\S3Target'
             targetOptions:
-              bucket: 'media.neos.example.com'
-              keyPrefix: 'mywebsite.com/'
+              bucket: 'target.neos.example.com'
+              keyPrefix: 'sites/wwwexamplecom/'
               baseUri: 'https://abc123def456.cloudfront.net/'
 ```
 
 Some notes regarding the configuration:
 
-You must create separate buckets for storage and target respectively, because the storage will remain private and the target will potentially be published. Even if it might work using one bucket for both, this is a non-supported setup.
+You must create separate buckets for storage and target respectively, because the storage will remain private and the
+target will potentially be published. Even if it might work using one bucket for both, this is a non-supported setup.
 
-The `keyPrefix` option allows you to share one bucket accross multiple websites or applications. All S3 objects keys will be prefiexd by the given string.
+The `keyPrefix` option allows you to share one bucket accross multiple websites or applications. All S3 objects keys
+will be prefiexd by the given string.
 
-The `baseUri` option defines the root of the publicly accessible address pointing to your published resources. In the example above, baseUri points to a Cloudfront subdomain which needs to be set up separately. It is rarely a good idea to the public URI of S3 objects directly (like, for example "https://s3.eu-central-1.amazonaws.com/target.neos.example.com/mywebsite.com/00889c4636cd77876e154796d469955e567ce23c/NeosCMS-2507x3347.jpg") because S3 is usually too slow for being used as a server for common assets on your website. It's good for downloads, but not for your CSS files or photos.
+The `baseUri` option defines the root of the publicly accessible address pointing to your published resources. In the
+example above, baseUri points to a Cloudfront subdomain which needs to be set up separately. It is rarely a good idea to
+the public URI of S3 objects directly (like, for example "https://s3.eu-central-1.amazonaws.com/target.neos.example.com/sites/wwwexamplecom/00889c4636cd77876e154796d469955e567ce23c/NeosCMS-2507x3347.jpg") because S3 is usually too slow for being used as a server for common assets on your website. It's good for downloads, but not for your CSS files or photos.
 
-In order to copy the resources to the new storage we need a temporary collection that uses the storage and the new publication target.
+In order to copy the resources to the new storage we need a temporary collection that uses the storage and the new
+publication target.
 
 ```yaml
 
@@ -139,7 +219,9 @@ Now you can use the ``resource:copy`` command (available in Flow 3.1 or Neos 2.1
 
 ```
 
-This will copy all your files from your current storage (local filesystem) to the new remote storage. The ``--publish`` flag means that this command also publishes all the resources to the new target, and you have the same state on your current storage and publication target as on the new one.
+This will copy all your files from your current storage (local filesystem) to the new remote storage. The ``--publish``
+flag means that this command also publishes all the resources to the new target, and you have the same state on your
+current storage and publication target as on the new one.
 
 Now you can overwrite your old collection configuration and remove the temporary one:
 
@@ -174,7 +256,7 @@ TYPO3:
           storage: 'Flownative\Aws\S3\S3Storage'
           storageOptions:
             bucket: 'storage.neos.prd.fra.flownative.net'
-            keyPrefix: 'flownative/neosio/'
+            keyPrefix: 'flownative/wwwneosio/'
 
       collections:
 
@@ -195,8 +277,8 @@ TYPO3:
           target: 'Flownative\Aws\S3\S3Target'
           targetOptions:
             bucket: 'target.neos.prd.fra.flownative.net'
-            keyPrefix: 'flownative/neosio/'
-            baseUri: 'https://d1z3d9iccwfvx7.cloudfront.net/'
+            keyPrefix: 'flownative/wwwneosio/'
+            baseUri: 'https://12345abcde6789.cloudfront.net/'
 
 Flownative:
   Aws:
@@ -204,7 +286,7 @@ Flownative:
       profiles:
         default:
           credentials:
-            key: 'CD2ADVB134LQ9SFICAJB'
+            key: 'QD2AD2B134LQ9SF1CAJB'
             secret: 'ak1KJAnotasecret9JamNkwYY188872MyljWJ'
           region: 'eu-central-1'
 ```
