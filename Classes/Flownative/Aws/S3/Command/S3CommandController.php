@@ -26,18 +26,51 @@ class S3CommandController extends CommandController {
 	/**
 	 * Checks the connection
 	 *
-	 * This command checks if the configured credentials and connectivity allows for
-	 * connecting with the S3 web service.
+	 * This command checks if the configured credentials and connectivity allows for connecting with the S3 web service.
 	 *
+	 * By default, this command will run the "list buckets" operation on the S3 web service. If your IAM policy does
+	 * not allow listing buckets, you can pass a specific bucket through the "--bucket" argument. In that case, this
+	 * command will try to retrieve meta data only for that given bucket using the "head bucket" operation.
+	 *
+	 * @param string $bucket If specified, we try to connect by retrieving meta data for this specific bucket only
+	 * @param string $prefix
 	 * @return void
 	 */
-	public function connectCommand() {
+	public function connectCommand($bucket = NULL, $prefix = '') {
 		try {
 			$s3Client = S3Client::factory($this->s3DefaultProfile);
-			$s3Client->listBuckets();
+			if ($bucket !== NULL) {
+				$s3Client->registerStreamWrapper();
+
+				$this->outputLine('Access list of objects in bucket "%s" with key prefix "%s" ...', [$bucket, $prefix]);
+				$iterator = $s3Client->getListObjectsIterator(['Bucket' => $bucket, 'Prefix' => $prefix]);
+				$iterator->toArray();
+
+				$options = array(
+					'Bucket' => $bucket,
+					'Body' => 'test',
+					'ContentLength' => 4,
+					'ContentType' => 'text/plain',
+					'Key' => $prefix . 'Flownative.Aws.S3.ConnectionTest.txt'
+				);
+				$this->outputLine('Writing test object into bucket (arn:aws:s3:::%s/%s) ...', [$bucket, $options['Key']]);
+				$s3Client->putObject($options);
+
+				$this->outputLine('Deleting test object from bucket ...');
+				$options = array(
+					'Bucket' => $bucket,
+					'Key' => $prefix . 'Flownative.Aws.S3.ConnectionTest.txt'
+				);
+				$s3Client->deleteObject($options);
+			} else {
+				$s3Client->listBuckets();
+			}
 		}
 		catch (\Exception $e) {
-			$this->outputLine($e->getMessage());
+			$this->outputLine('<b>' . $e->getMessage() . '</b>');
+			if ($bucket === NULL || $prefix === '') {
+				$this->outputLine('Hint: Maybe your IAM policy restricts the user from listing all buckets. In that case, try using the "--bucket" and "--prefix" arguments.');
+			}
 			$this->quit(1);
 		}
 		$this->outputLine('OK');
