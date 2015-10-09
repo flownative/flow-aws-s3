@@ -1,7 +1,6 @@
-![License][license]
+[![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT)
 ![Packagist][packagist]
 
-[license]: https://img.shields.io/github/license/flownative/aws-s3.svg
 [packagist]: https://img.shields.io/packagist/v/flownative/aws-s3.svg
 
 # AWS S3 Adaptor for Neos 2.x and Flow 3.x
