@@ -319,10 +319,8 @@ class S3Target implements TargetInterface {
 		try {
 			$this->s3Client->upload($this->bucketName, $objectName, $sourceStream, 'public-read', $options);
 			$this->systemLogger->log(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'), LOG_DEBUG);
-			fclose($sourceStream);
 		} catch(\Exception $e) {
 			$this->systemLogger->log(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()), LOG_DEBUG);
-			fclose($sourceStream);
 			throw $e;
 		}
 	}
