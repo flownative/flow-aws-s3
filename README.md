@@ -298,7 +298,7 @@ Flownative:
 ## Using Google Cloud Storage
 
 Google Cloud Storage (GCS) is an offering by Google which is very similar to AWS S3. In fact, GCS supports an S3-compatible
-endpoint which allows you to use Google's storage as a eplacement for Amazon's S3. However, note that, if you
+endpoint which allows you to use Google's storage as a replacement for Amazon's S3. However, note that if you
 access GCS through the S3 compatible service endpoint, you won't be able to use the full feature set of Google Cloud
 Storage and you cannot easily restrict access for different users to specific buckets or sub paths. 
 
