@@ -181,8 +181,8 @@ class S3Target implements TargetInterface {
 		$storage = $collection->getStorage();
 		if ($storage instanceof S3Storage) {
 			$storageBucketName = $storage->getBucketName();
-			if ($storageBucketName === $this->bucketName) {
-				throw new Exception(sprintf('Could not publish collection %s because the source and target S3 bucket is the same.', $collection->getName()), 1428929137);
+			if ($storageBucketName === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
+				throw new Exception(sprintf('Could not publish collection %s because the source and target S3 bucket is the same, with identical key prefixes. Either choose a different bucket or at least key prefix for the target.', $collection->getName()), 1428929137);
 			}
 			foreach ($collection->getObjects() as $object) {
 				/** @var \TYPO3\Flow\Resource\Storage\Object $object */
@@ -240,8 +240,8 @@ class S3Target implements TargetInterface {
 	public function publishResource(Resource $resource, CollectionInterface $collection) {
 		$storage = $collection->getStorage();
 		if ($storage instanceof S3Storage) {
-			if ($storage->getBucketName() === $this->bucketName) {
-				throw new Exception(sprintf('Could not publish resource with SHA1 hash %s of collection %s because the source and target S3 bucket is the same.', $resource->getSha1(), $collection->getName()), 1428929563);
+			if ($storage->getBucketName() === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
+				throw new Exception(sprintf('Could not publish resource with SHA1 hash %s of collection %s because the source and target S3 bucket is the same, with identical key prefixes. Either choose a different bucket or at least key prefix for the target.', $resource->getSha1(), $collection->getName()), 1428929563);
 			}
 			try {
 				$sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();

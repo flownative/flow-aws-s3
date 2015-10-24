@@ -7,7 +7,6 @@ namespace Flownative\Aws\S3;
  *                                                                        */
 
 use Aws\S3\S3Client;
-use Guzzle\Http\EntityBody;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Resource\CollectionInterface;
 use TYPO3\Flow\Resource\Resource;
@@ -288,7 +287,16 @@ class S3Storage implements WritableStorageInterface {
 	 * @api
 	 */
 	public function getStreamByResource(Resource $resource) {
-		return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
+		try {
+			return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
+		} catch (\Exception $e) {
+			if (strpos($e->getMessage(), '<Code>NoSuchKey</Code>') !== false) {
+				return false;
+			}
+			$message = sprintf('Could not retrieve stream for resource %s (s3://%s/%s%s). %s', $resource->getFilename(), $this->bucketName, $this->keyPrefix, $resource->getSha1(), $e->getMessage());
+			$this->systemLogger->log($message, \LOG_ERR);
+			throw new Exception($message, 1445682605);
+		}
 	}
 
 	/**
@@ -300,7 +308,16 @@ class S3Storage implements WritableStorageInterface {
 	 * @api
 	 */
 	public function getStreamByResourcePath($relativePath) {
-		return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . ltrim('/', $relativePath), 'r');
+		try {
+			return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . ltrim('/', $relativePath), 'r');
+		} catch (\Exception $e) {
+			if (strpos($e->getMessage(), '<Code>NoSuchKey</Code>') !== false) {
+				return false;
+			}
+			$message = sprintf('Could not retrieve stream for resource (s3://%s/%s%s). %s', $this->bucketName, $this->keyPrefix, ltrim('/', $relativePath), $e->getMessage());
+			$this->systemLogger->log($message, \LOG_ERR);
+			throw new Exception($message, 1445682606);
+		}
 	}
 
 	/**
