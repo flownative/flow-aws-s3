@@ -285,6 +285,7 @@ Flownative:
     S3:
       profiles:
         default:
+          signature: 'v4'
           credentials:
             key: 'QD2AD2B134LQ9SF1CAJB'
             secret: 'ak1KJAnotasecret9JamNkwYY188872MyljWJ'
