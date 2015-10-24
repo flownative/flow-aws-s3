@@ -18,7 +18,7 @@
     "aws/aws-sdk-php": "2.8.*"
   },
   "autoload": {
-    "psr-0": {
+    "psr-4": {
       "Flownative\\Aws\\S3": "Classes"
     }
   }
