@@ -2,12 +2,20 @@ Flownative:
   Aws:
     S3:
       profiles:
-        # Default credentials and client options
-        # Override these in your settings with real values
+        # Default credentials and client options - override these in your settings with real values
+        # For more documentation regarding options, see http://docs.aws.amazon.com/aws-sdk-php/v2/guide/configuration.html#client-configuration-options
         default:
           # Don't use the old signature v2 - certain regions don't support them
           signature: 'v4'
           credentials:
             key: 'ABCD123EFG456HIJ7890'
             secret: 'aBc123DEf456GHi789JKlMNopqRsTuVWXyz12345'
-#          region: 'eu-central-1'
+
+          # If the region is not specified, the default region will be used (according to the S3 service)
+          region: 'us-west-1'
+
+          # URI Scheme of the base URL (e.g.. 'https', 'http') used when endpoint is not supplied
+          scheme: 'https'
+
+          # Custom endpoint, for example for Google Cloud Storage
+          #endpoint: 'https://storage.googleapis.com/<bucket>'

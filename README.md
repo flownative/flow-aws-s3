@@ -59,6 +59,9 @@ a bucket, you must specify the bucket and key prefix:
 Note that it does make a difference if you specify the prefix with a leading slash "/" or without, because the corresponding
 policy must match the pattern correctly, as you can see in the next section.
 
+Right now, you can only define one connection profile, namely the "default" profile. Additional profiles may be supported
+in future versions.
+
 ## IAM Setup
 
 It is best practice to create a user through AWS' Identity and Access Management which is exclusively used for your
@@ -244,7 +247,7 @@ Clear caches and you're done.
 
 ```
 
-## Full Example Configuration
+## Full Example Configuration for S3
 
 ```yaml
 TYPO3:
@@ -290,4 +293,38 @@ Flownative:
             key: 'QD2AD2B134LQ9SF1CAJB'
             secret: 'ak1KJAnotasecret9JamNkwYY188872MyljWJ'
           region: 'eu-central-1'
+```
+
+## Using Google Cloud Storage
+
+Google Cloud Storage (GCS) is an offering by Google which is very similar to AWS S3. In fact, GCS supports an S3-compatible
+endpoint which allows you to use Google's storage as a eplacement for Amazon's S3. However, note that, if you
+access GCS through the S3 compatible service endpoint, you won't be able to use the full feature set of Google Cloud
+Storage and you cannot easily restrict access for different users to specific buckets or sub paths. 
+
+GCS does not have a limit for the number of buckets you can have for one account, therefore you don't necessarily need
+to share buckets across sites or projects. The following instructions assume that you use one dedicated bucket for
+your Neos or Flow project.
+
+To enable S3 support, go to your Google Cloud Storage console and enable interoperability in the Settings panel. Once
+this mode is enabled, you can create one or more access keys which you can use for accessing GCS through the S3
+endpoint.
+
+![Google Cloud Storage Interoperability Settings](Documentation/gcs-interop-settings.png)
+
+You can then use the generated key and secret in the settings of the S3 connector. Additionally to the usual credentials,
+you need to specify a custom endpoint which refers to Google's S3 compatibility service.
+
+```yaml
+Flownative:
+  Aws:
+    S3:
+      profiles:
+        # Default credentials and client options
+        # Override these in your settings with real values
+        default:
+          credentials:
+            key: 'GOOGABCDEFG123456789'
+            secret: 'abcdefgHIJKLMNOP1234567890QRSTUVWXYZabcd'
+          endpoint: 'https://storage.googleapis.com/mybucket.flownative.net'
 ```
