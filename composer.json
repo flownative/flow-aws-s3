@@ -6,7 +6,7 @@
     {
       "name": "Robert Lemke",
       "email": "robert@flownative.com",
-      "homepage": "http://flownative.com",
+      "homepage": "https://www.ative.com",
       "role": "Developer"
     }
   ],
@@ -14,12 +14,12 @@
     "MIT"
   ],
   "require": {
-    "typo3/flow": "*",
+    "typo3/flow": "3.*",
     "aws/aws-sdk-php": "2.8.*"
   },
   "autoload": {
-    "psr-0": {
-      "Flownative\\Aws\\S3": "Classes"
+    "psr-4": {
+      "Flownative\\Aws\\S3\\": "Classes"
     }
   }
 }
