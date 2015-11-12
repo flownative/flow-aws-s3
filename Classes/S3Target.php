@@ -304,9 +304,9 @@ class S3Target implements TargetInterface
     public function getPublicPersistentResourceUri(Resource $resource)
     {
         if ($this->baseUri != '') {
-            return $this->baseUri . $this->getRelativePublicationPathAndFilename($resource);
+            return $this->baseUri . $this->getRelativePublicationPathAndFilename($resource, TRUE);
         } else {
-            return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
+            return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource, TRUE));
         }
     }
 
@@ -344,14 +344,16 @@ class S3Target implements TargetInterface
      * represents a static resources, it will contain a relative path.
      *
      * @param ResourceMetaDataInterface $object Resource or Storage Object
+     * @param boolean $urlEncode Set to url encode the filename
      * @return string The relative path and filename, for example "c828d0f88ce197be1aff7cc2e5e86b1244241ac6/MyPicture.jpg"
      */
-    protected function getRelativePublicationPathAndFilename(ResourceMetaDataInterface $object)
-    {
+    protected function getRelativePublicationPathAndFilename(ResourceMetaDataInterface $object, $urlEncode = FALSE) {
+        $filename = $urlEncode ? rawurlencode($object->getFilename()) : $object->getFilename();
+
         if ($object->getRelativePublicationPath() !== '') {
-            $pathAndFilename = $object->getRelativePublicationPath() . $object->getFilename();
+            $pathAndFilename = $object->getRelativePublicationPath() . $filename;
         } else {
-            $pathAndFilename = $object->getSha1() . '/' . $object->getFilename();
+            $pathAndFilename = $object->getSha1() . '/' . $filename;
         }
         return $pathAndFilename;
     }
