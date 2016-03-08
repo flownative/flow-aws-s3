@@ -6,7 +6,7 @@
     {
       "name": "Robert Lemke",
       "email": "robert@flownative.com",
-      "homepage": "https://www.ative.com",
+      "homepage": "https://www.flownative.com",
       "role": "Developer"
     }
   ],
@@ -14,7 +14,7 @@
     "MIT"
   ],
   "require": {
-    "typo3/flow": "3.*",
+    "typo3/flow": ">=3.0 <3.1",
     "aws/aws-sdk-php": "2.8.*"
   },
   "autoload": {
