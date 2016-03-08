@@ -9,7 +9,6 @@ namespace Flownative\Aws\S3;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
-use TYPO3\Flow\Resource\Collection;
 use TYPO3\Flow\Resource\CollectionInterface;
 use TYPO3\Flow\Resource\Exception;
 use TYPO3\Flow\Resource\Resource;
@@ -158,11 +157,11 @@ class S3Target implements TargetInterface
     /**
      * Publishes the whole collection to this target
      *
-     * @param \TYPO3\Flow\Resource\Collection $collection The collection to publish
+     * @param \TYPO3\Flow\Resource\CollectionInterface $collection The collection to publish
      * @return void
      * @throws Exception
      */
-    public function publishCollection(Collection $collection)
+    public function publishCollection(CollectionInterface $collection)
     {
         if (!isset($this->existingObjectsInfo)) {
             $this->existingObjectsInfo = array();

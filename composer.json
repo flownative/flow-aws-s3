@@ -14,7 +14,7 @@
     "MIT"
   ],
   "require": {
-    "typo3/flow": ">=3.0 <3.1",
+    "typo3/flow": ">=3.1",
     "aws/aws-sdk-php": "2.8.*"
   },
   "autoload": {
