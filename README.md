@@ -23,7 +23,7 @@ The Flownative AWS S3 connector is installed as a regular Flow package via Compo
 include `flownative/aws-s3` into the dependencies of your Flow or Neos distribution:
 
 ```bash
-    $ composer require flownative/aws-s3:~1.0@beta
+    $ composer require flownative/aws-s3:1.*
 ```
 
 ## Configuration
