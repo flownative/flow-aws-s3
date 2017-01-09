@@ -1,25 +1,30 @@
 {
-  "name": "flownative/aws-s3",
-  "type": "typo3-flow-package",
-  "description": "",
-  "authors": [
-    {
-      "name": "Robert Lemke",
-      "email": "robert@flownative.com",
-      "homepage": "https://www.flownative.com",
-      "role": "Developer"
+    "name": "flownative/aws-s3",
+    "type": "typo3-flow-package",
+    "description": "",
+    "authors": [
+        {
+            "name": "Robert Lemke",
+            "email": "robert@flownative.com",
+            "homepage": "https://www.flownative.com",
+            "role": "Developer"
+        }
+    ],
+    "license": [
+        "MIT"
+    ],
+    "require": {
+        "typo3/flow": ">=3.1",
+        "aws/aws-sdk-php": "2.8.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Flownative\\Aws\\S3\\": "Classes"
+        }
+    },
+    "extra": {
+        "applied-flow-migrations": [
+            "TYPO3.FLOW3-201201261636"
+        ]
     }
-  ],
-  "license": [
-    "MIT"
-  ],
-  "require": {
-    "typo3/flow": ">=3.1",
-    "aws/aws-sdk-php": "2.8.*"
-  },
-  "autoload": {
-    "psr-4": {
-      "Flownative\\Aws\\S3\\": "Classes"
-    }
-  }
 }
