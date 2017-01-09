@@ -1,6 +1,6 @@
 {
     "name": "flownative/aws-s3",
-    "type": "typo3-flow-package",
+    "type": "neos-package",
     "description": "",
     "authors": [
         {
