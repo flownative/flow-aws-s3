@@ -7,8 +7,8 @@ namespace Flownative\Aws\S3\Command;
 
 use Aws\S3\Model\ClearBucket;
 use Aws\S3\S3Client;
-use TYPO3\Flow\Annotations as Flow;
-use TYPO3\Flow\Cli\CommandController;
+use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Cli\CommandController;
 
 /**
  * S3 command controller for the Flownative.Aws.S3 package
