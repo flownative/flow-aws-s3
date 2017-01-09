@@ -52,7 +52,8 @@
             "Neos.Imagine-20161124231742",
             "Neos.Media-20161124233100",
             "Neos.Flow-20161125124112",
-            "Neos.SwiftMailer-20161130105617"
+            "Neos.SwiftMailer-20161130105617",
+            "TYPO3.FluidAdaptor-20161130112935"
         ]
     }
 }
