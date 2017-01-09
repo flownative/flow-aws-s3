@@ -242,7 +242,7 @@ class S3Target implements TargetInterface
      * @return void
      * @throws Exception
      */
-    public function publishResource(Resource $resource, CollectionInterface $collection)
+    public function publishResource(PersistentResource $resource, CollectionInterface $collection)
     {
         $storage = $collection->getStorage();
         if ($storage instanceof S3Storage) {
@@ -280,7 +280,7 @@ class S3Target implements TargetInterface
      * @param \Neos\Flow\ResourceManagement\PersistentResource $resource The resource to unpublish
      * @return void
      */
-    public function unpublishResource(Resource $resource)
+    public function unpublishResource(PersistentResource $resource)
     {
         try {
             $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
@@ -300,7 +300,7 @@ class S3Target implements TargetInterface
      * @return string The URI
      * @throws Exception
      */
-    public function getPublicPersistentResourceUri(Resource $resource)
+    public function getPublicPersistentResourceUri(PersistentResource $resource)
     {
         if ($this->baseUri != '') {
             return $this->baseUri . $this->getRelativePublicationPathAndFilename($resource);

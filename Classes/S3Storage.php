@@ -156,7 +156,7 @@ class S3Storage implements WritableStorageInterface
      *
      * @param string | resource $source The URI (or local path and filename) or the PHP resource stream to import the resource from
      * @param string $collectionName Name of the collection the new Resource belongs to
-     * @return Resource A resource object representing the imported resource
+     * @return PersistentResource A resource object representing the imported resource
      * @throws \Neos\Flow\ResourceManagement\Storage\Exception
      */
     public function importResource($source, $collectionName)
@@ -192,9 +192,9 @@ class S3Storage implements WritableStorageInterface
      * important because the resource management will derive the IANA Media Type from it.
      *
      * @param string $content The actual content to import
-     * @return Resource A resource object representing the imported resource
+     * @return PersistentResource A resource object representing the imported resource
      * @param string $collectionName Name of the collection the new Resource belongs to
-     * @return Resource A resource object representing the imported resource
+     * @return PersistentResource A resource object representing the imported resource
      * @throws Exception
      * @api
      */
@@ -204,7 +204,7 @@ class S3Storage implements WritableStorageInterface
         $md5Hash = md5($content);
         $filename = $sha1Hash;
 
-        $resource = new Resource();
+        $resource = new PersistentResource();
         $resource->setFilename($filename);
         $resource->setFileSize(strlen($content));
         $resource->setCollectionName($collectionName);
@@ -253,7 +253,7 @@ class S3Storage implements WritableStorageInterface
         $sha1Hash = sha1_file($newSourcePathAndFilename);
         $md5Hash = md5_file($newSourcePathAndFilename);
 
-        $resource = new Resource();
+        $resource = new PersistentResource();
         $resource->setFilename($originalFilename);
         $resource->setCollectionName($collectionName);
         $resource->setFileSize(filesize($newSourcePathAndFilename));
@@ -278,7 +278,7 @@ class S3Storage implements WritableStorageInterface
      * @return boolean TRUE if removal was successful
      * @api
      */
-    public function deleteResource(Resource $resource)
+    public function deleteResource(PersistentResource $resource)
     {
         $this->s3Client->deleteObject(array(
             'Bucket' => $this->bucketName,
@@ -295,7 +295,7 @@ class S3Storage implements WritableStorageInterface
      * @return resource | boolean A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
      * @api
      */
-    public function getStreamByResource(Resource $resource)
+    public function getStreamByResource(PersistentResource $resource)
     {
         try {
             return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
@@ -384,7 +384,7 @@ class S3Storage implements WritableStorageInterface
         $sha1Hash = sha1_file($temporaryPathAndFilename);
         $md5Hash = md5_file($temporaryPathAndFilename);
 
-        $resource = new Resource();
+        $resource = new PersistentResource();
         $resource->setFileSize(filesize($temporaryPathAndFilename));
         $resource->setCollectionName($collectionName);
         $resource->setSha1($sha1Hash);
