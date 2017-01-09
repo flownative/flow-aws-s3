@@ -9,12 +9,12 @@ namespace Flownative\Aws\S3;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
-use TYPO3\Flow\Resource\CollectionInterface;
-use TYPO3\Flow\Resource\Exception;
-use TYPO3\Flow\Resource\Resource;
-use TYPO3\Flow\Resource\ResourceManager;
-use TYPO3\Flow\Resource\ResourceMetaDataInterface;
-use TYPO3\Flow\Resource\Target\TargetInterface;
+use TYPO3\Flow\ResourceManagement\CollectionInterface;
+use TYPO3\Flow\ResourceManagement\Exception;
+use TYPO3\Flow\ResourceManagement\PersistentResource;
+use TYPO3\Flow\ResourceManagement\ResourceManager;
+use TYPO3\Flow\ResourceManagement\ResourceMetaDataInterface;
+use TYPO3\Flow\ResourceManagement\Target\TargetInterface;
 
 /**
  * A resource publishing target based on Amazon S3
@@ -57,7 +57,7 @@ class S3Target implements TargetInterface
     /**
      * Internal cache for known storages, indexed by storage name
      *
-     * @var array<\TYPO3\Flow\Resource\Storage\StorageInterface>
+     * @var array<\TYPO3\Flow\ResourceManagement\Storage\StorageInterface>
      */
     protected $storages = array();
 
@@ -157,7 +157,7 @@ class S3Target implements TargetInterface
     /**
      * Publishes the whole collection to this target
      *
-     * @param \TYPO3\Flow\Resource\CollectionInterface $collection The collection to publish
+     * @param \TYPO3\Flow\ResourceManagement\CollectionInterface $collection The collection to publish
      * @return void
      * @throws Exception
      */
@@ -189,7 +189,7 @@ class S3Target implements TargetInterface
                 throw new Exception(sprintf('Could not publish collection %s because the source and target S3 bucket is the same, with identical key prefixes. Either choose a different bucket or at least key prefix for the target.', $collection->getName()), 1428929137);
             }
             foreach ($collection->getObjects() as $object) {
-                /** @var \TYPO3\Flow\Resource\Storage\Object $object */
+                /** @var \TYPO3\Flow\ResourceManagement\Storage\StorageObject $object */
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 $options = array(
                     'ACL' => 'public-read',
@@ -209,7 +209,7 @@ class S3Target implements TargetInterface
             }
         } else {
             foreach ($collection->getObjects() as $object) {
-                /** @var \TYPO3\Flow\Resource\Storage\Object $object */
+                /** @var \TYPO3\Flow\ResourceManagement\Storage\StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 unset($obsoleteObjects[$this->getRelativePublicationPathAndFilename($object)]);
             }
@@ -237,7 +237,7 @@ class S3Target implements TargetInterface
     /**
      * Publishes the given persistent resource from the given storage
      *
-     * @param \TYPO3\Flow\Resource\Resource $resource The resource to publish
+     * @param \TYPO3\Flow\ResourceManagement\PersistentResource $resource The resource to publish
      * @param CollectionInterface $collection The collection the given resource belongs to
      * @return void
      * @throws Exception
@@ -277,7 +277,7 @@ class S3Target implements TargetInterface
     /**
      * Unpublishes the given persistent resource
      *
-     * @param \TYPO3\Flow\Resource\Resource $resource The resource to unpublish
+     * @param \TYPO3\Flow\ResourceManagement\PersistentResource $resource The resource to unpublish
      * @return void
      */
     public function unpublishResource(Resource $resource)
@@ -296,7 +296,7 @@ class S3Target implements TargetInterface
     /**
      * Returns the web accessible URI pointing to the specified persistent resource
      *
-     * @param \TYPO3\Flow\Resource\Resource $resource Resource object or the resource hash of the resource
+     * @param \TYPO3\Flow\ResourceManagement\PersistentResource $resource Resource object or the resource hash of the resource
      * @return string The URI
      * @throws Exception
      */

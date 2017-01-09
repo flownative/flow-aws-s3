@@ -8,13 +8,13 @@ namespace Flownative\Aws\S3;
 
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
-use TYPO3\Flow\Resource\CollectionInterface;
-use TYPO3\Flow\Resource\Resource;
-use TYPO3\Flow\Resource\ResourceManager;
-use TYPO3\Flow\Resource\ResourceRepository;
-use TYPO3\Flow\Resource\Storage\Exception;
-use TYPO3\Flow\Resource\Storage\Object;
-use TYPO3\Flow\Resource\Storage\WritableStorageInterface;
+use TYPO3\Flow\ResourceManagement\CollectionInterface;
+use TYPO3\Flow\ResourceManagement\PersistentResource;
+use TYPO3\Flow\ResourceManagement\ResourceManager;
+use TYPO3\Flow\ResourceManagement\ResourceRepository;
+use TYPO3\Flow\ResourceManagement\Storage\Exception;
+use TYPO3\Flow\ResourceManagement\Storage\StorageObject;
+use TYPO3\Flow\ResourceManagement\Storage\WritableStorageInterface;
 use TYPO3\Flow\Utility\Environment;
 
 /**
@@ -157,7 +157,7 @@ class S3Storage implements WritableStorageInterface
      * @param string | resource $source The URI (or local path and filename) or the PHP resource stream to import the resource from
      * @param string $collectionName Name of the collection the new Resource belongs to
      * @return Resource A resource object representing the imported resource
-     * @throws \TYPO3\Flow\Resource\Storage\Exception
+     * @throws \TYPO3\Flow\ResourceManagement\Storage\Exception
      */
     public function importResource($source, $collectionName)
     {
@@ -274,7 +274,7 @@ class S3Storage implements WritableStorageInterface
     /**
      * Deletes the storage data related to the given Resource object
      *
-     * @param \TYPO3\Flow\Resource\Resource $resource The Resource to delete the storage data of
+     * @param \TYPO3\Flow\ResourceManagement\PersistentResource $resource The Resource to delete the storage data of
      * @return boolean TRUE if removal was successful
      * @api
      */
@@ -291,7 +291,7 @@ class S3Storage implements WritableStorageInterface
      * Returns a stream handle which can be used internally to open / copy the given resource
      * stored in this storage.
      *
-     * @param \TYPO3\Flow\Resource\Resource $resource The resource stored in this storage
+     * @param \TYPO3\Flow\ResourceManagement\PersistentResource $resource The resource stored in this storage
      * @return resource | boolean A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
      * @api
      */
@@ -334,7 +334,7 @@ class S3Storage implements WritableStorageInterface
     /**
      * Retrieve all Objects stored in this storage.
      *
-     * @return array<\TYPO3\Flow\Resource\Storage\Object>
+     * @return array<\TYPO3\Flow\ResourceManagement\Storage\StorageObject>
      * @api
      */
     public function getObjects()
@@ -351,7 +351,7 @@ class S3Storage implements WritableStorageInterface
      *
      * @param CollectionInterface $collection
      * @internal param string $collectionName
-     * @return array<\TYPO3\Flow\Resource\Storage\Object>
+     * @return array<\TYPO3\Flow\ResourceManagement\Storage\StorageObject>
      * @api
      */
     public function getObjectsByCollection(CollectionInterface $collection)
@@ -361,7 +361,7 @@ class S3Storage implements WritableStorageInterface
         $bucketName = $this->bucketName;
 
         foreach ($this->resourceRepository->findByCollectionName($collection->getName()) as $resource) {
-            /** @var \TYPO3\Flow\Resource\Resource $resource */
+            /** @var \TYPO3\Flow\ResourceManagement\PersistentResource $resource */
             $object = new Object();
             $object->setFilename($resource->getFilename());
             $object->setSha1($resource->getSha1());
