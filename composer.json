@@ -1,7 +1,7 @@
 {
   "name": "flownative/aws-s3",
   "type": "typo3-flow-package",
-  "description": "",
+  "description": "Amazon S3 adaptor for Neos and Flow",
   "authors": [
     {
       "name": "Robert Lemke",
@@ -14,7 +14,7 @@
     "MIT"
   ],
   "require": {
-    "typo3/flow": ">=3.1",
+    "typo3/flow": "~3.1",
     "aws/aws-sdk-php": "2.8.*"
   },
   "autoload": {
