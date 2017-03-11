@@ -130,7 +130,7 @@ class S3Target implements TargetInterface
     {
         $clientOptions = $this->s3DefaultProfile;
 
-        $this->s3Client = S3Client::factory($clientOptions);
+        $this->s3Client = new S3Client($clientOptions);
         $this->s3Client->registerStreamWrapper();
     }
 

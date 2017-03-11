@@ -3,11 +3,12 @@
 
 [packagist]: https://img.shields.io/packagist/v/flownative/aws-s3.svg
 
-# AWS S3 Adaptor for Neos 2.x and Flow 3.x
+# AWS S3 Adaptor for Neos and Flow
 
-This [Flow](https://flow.typo3.org) package allows you to store assets (resources) in [Amazon's S3](https://aws.amazon.com/s3/)
-and publish resources to S3 or [Cloudfront](https://aws.amazon.com/cloudfront/). Because [Neos CMS](https://www.neos.io) is
-using Flow's resource management under the hood, this adaptor also works nicely for all kinds of assets in Neos.
+This [Flow](https://flow.neos.io) package allows you to store assets (resources) in [Amazon's S3](https://aws.amazon.com/s3/)
+or S3-compatible storages and publish resources to S3 or [Cloudfront](https://aws.amazon.com/cloudfront/). Because
+[Neos CMS](https://www.neos.io) is using Flow's resource management under the hood, this adaptor also works nicely for
+all kinds of assets in Neos.
 
 ## Key Features
 
@@ -23,7 +24,7 @@ The Flownative AWS S3 connector is installed as a regular Flow package via Compo
 include `flownative/aws-s3` into the dependencies of your Flow or Neos distribution:
 
 ```bash
-    $ composer require flownative/aws-s3:1.*
+    $ composer require flownative/aws-s3:2.*
 ```
 
 ## Configuration
@@ -136,7 +137,7 @@ to your collection.
 
 ```yaml
 
-  TYPO3:
+  Neos:
     Flow:
       resource:
         collections:
@@ -170,7 +171,7 @@ assets by the remote storage system, you also add a target that contains your pu
 
 ```yaml
 
-  TYPO3:
+  Neos:
     Flow:
       resource:
         storages:
@@ -205,7 +206,7 @@ publication target.
 
 ```yaml
 
-  TYPO3:
+  Neos:
     Flow:
       resource:
         collections:
@@ -230,7 +231,7 @@ Now you can overwrite your old collection configuration and remove the temporary
 
 ```yaml
 
-  TYPO3:
+  Neos:
     Flow:
       resource:
         collections:
@@ -250,7 +251,7 @@ Clear caches and you're done.
 ## Full Example Configuration for S3
 
 ```yaml
-TYPO3:
+Neos:
   Flow:
 
     resource:
@@ -270,7 +271,7 @@ TYPO3:
 
       targets:
         localWebDirectoryPersistentResourcesTarget:
-          target: 'TYPO3\Flow\Resource\Target\FileSystemTarget'
+          target: 'Neos\Flow\ResourceManagement\Target\FileSystemTarget'
           targetOptions:
             path: '%FLOW_PATH_WEB%_Resources/Persistent/'
             baseUri: '_Resources/Persistent/'

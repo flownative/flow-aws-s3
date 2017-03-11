@@ -5,8 +5,14 @@ Flownative:
         # Default credentials and client options - override these in your settings with real values
         # For more documentation regarding options, see http://docs.aws.amazon.com/aws-sdk-php/v2/guide/configuration.html#client-configuration-options
         default:
+
+          # Select the API version to use
+          version: '2006-03-01'
+
           # Don't use the old signature v2 - certain regions don't support them
-          signature: 'v4'
+          signature_version: 'v4'
+
+          # Define credentials for authentication
           credentials:
             key: 'ABCD123EFG456HIJ7890'
             secret: 'aBc123DEf456GHi789JKlMNopqRsTuVWXyz12345'
