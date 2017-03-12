@@ -14,6 +14,7 @@ use Neos\Flow\ResourceManagement\PersistentResource;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Flow\ResourceManagement\ResourceRepository;
 use Neos\Flow\ResourceManagement\Storage\Exception;
+use Neos\Flow\ResourceManagement\Storage\StorageObject;
 use Neos\Flow\ResourceManagement\Storage\WritableStorageInterface;
 use Neos\Flow\Utility\Environment;
 
@@ -364,7 +365,7 @@ class S3Storage implements WritableStorageInterface
 
         foreach ($this->resourceRepository->findByCollectionName($collection->getName()) as $resource) {
             /** @var \Neos\Flow\ResourceManagement\PersistentResource $resource */
-            $object = new Object();
+            $object = new StorageObject();
             $object->setFilename($resource->getFilename());
             $object->setSha1($resource->getSha1());
             $object->setStream(function () use ($that, $bucketName, $resource) {
