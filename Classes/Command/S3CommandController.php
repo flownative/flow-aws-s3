@@ -5,6 +5,7 @@ namespace Flownative\Aws\S3\Command;
  * This script belongs to the package "Flownative.Aws.S3".                *
  *                                                                        */
 
+use Aws\S3\BatchDelete;
 use Aws\S3\Model\ClearBucket;
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
@@ -39,13 +40,12 @@ class S3CommandController extends CommandController
     public function connectCommand($bucket = null, $prefix = '')
     {
         try {
-            $s3Client = S3Client::factory($this->s3DefaultProfile);
+            $s3Client = new S3Client($this->s3DefaultProfile);
             if ($bucket !== null) {
                 $s3Client->registerStreamWrapper();
 
                 $this->outputLine('Access list of objects in bucket "%s" with key prefix "%s" ...', [$bucket, $prefix]);
-                $iterator = $s3Client->getListObjectsIterator(['Bucket' => $bucket, 'Prefix' => $prefix]);
-                $iterator->toArray();
+                $s3Client->getPaginator('ListObjects', ['Bucket' => $bucket, 'Prefix' => $prefix]);
 
                 $options = array(
                     'Bucket' => $bucket,
@@ -87,11 +87,12 @@ class S3CommandController extends CommandController
     public function listBucketsCommand()
     {
         try {
-            $s3Client = S3Client::factory($this->s3DefaultProfile);
+            $s3Client = new S3Client($this->s3DefaultProfile);
             $result = $s3Client->listBuckets();
         } catch (\Exception $e) {
             $this->outputLine($e->getMessage());
             $this->quit(1);
+            exit;
         }
 
         if (count($result['Buckets']) === 0) {
@@ -119,13 +120,15 @@ class S3CommandController extends CommandController
     public function flushBucketCommand($bucket)
     {
         try {
-            $s3Client = S3Client::factory($this->s3DefaultProfile);
-            $clearBucket = new ClearBucket($s3Client, $bucket);
-            $clearBucket->clear();
+            $s3Client = new S3Client($this->s3DefaultProfile);
+            $batchDelete = BatchDelete::fromListObjects($s3Client, ['Bucket' => $bucket]);
+            $promise = $batchDelete->promise();
         } catch (\Exception $e) {
             $this->outputLine($e->getMessage());
             $this->quit(1);
+            exit;
         }
+        $promise->wait();
         $this->outputLine('Successfully flushed bucket %s.', array($bucket));
     }
 
@@ -153,7 +156,7 @@ class S3CommandController extends CommandController
         }
 
         try {
-            $s3Client = S3Client::factory($this->s3DefaultProfile);
+            $s3Client = new S3Client($this->s3DefaultProfile);
             $s3Client->putObject(array(
                 'Key' => $key,
                 'Bucket' => $bucket,

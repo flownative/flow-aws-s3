@@ -6,6 +6,7 @@ namespace Flownative\Aws\S3;
  *                                                                        *
  *                                                                        */
 
+use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Resource\CollectionInterface;
@@ -114,7 +115,7 @@ class S3Storage implements WritableStorageInterface
     {
         $clientOptions = $this->s3DefaultProfile;
 
-        $this->s3Client = S3Client::factory($clientOptions);
+        $this->s3Client = new S3Client($clientOptions);
         $this->s3Client->registerStreamWrapper();
     }
 
@@ -292,7 +293,8 @@ class S3Storage implements WritableStorageInterface
      * stored in this storage.
      *
      * @param \TYPO3\Flow\Resource\Resource $resource The resource stored in this storage
-     * @return resource | boolean A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
+     * @return bool|resource A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
+     * @throws Exception
      * @api
      */
     public function getStreamByResource(Resource $resource)
@@ -305,7 +307,7 @@ class S3Storage implements WritableStorageInterface
             }
             $message = sprintf('Could not retrieve stream for resource %s (s3://%s/%s%s). %s', $resource->getFilename(), $this->bucketName, $this->keyPrefix, $resource->getSha1(), $e->getMessage());
             $this->systemLogger->log($message, \LOG_ERR);
-            throw new Exception($message, 1445682605);
+            return false;
         }
     }
 
@@ -314,7 +316,8 @@ class S3Storage implements WritableStorageInterface
      * stored in this storage.
      *
      * @param string $relativePath A path relative to the storage root, for example "MyFirstDirectory/SecondDirectory/Foo.css"
-     * @return resource | boolean A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
+     * @return bool|resource A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
+     * @throws Exception
      * @api
      */
     public function getStreamByResourcePath($relativePath)
@@ -327,7 +330,7 @@ class S3Storage implements WritableStorageInterface
             }
             $message = sprintf('Could not retrieve stream for resource (s3://%s/%s%s). %s', $this->bucketName, $this->keyPrefix, ltrim('/', $relativePath), $e->getMessage());
             $this->systemLogger->log($message, \LOG_ERR);
-            throw new Exception($message, 1445682606);
+            return false;
         }
     }
 
@@ -365,7 +368,9 @@ class S3Storage implements WritableStorageInterface
             $object = new Object();
             $object->setFilename($resource->getFilename());
             $object->setSha1($resource->getSha1());
-            $object->setStream(function () use ($that, $bucketName, $resource) { return fopen('s3://' . $bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r'); });
+            $object->setStream(function () use ($that, $bucketName, $resource) {
+                return fopen('s3://' . $bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
+            });
             $objects[] = $object;
         }
 
@@ -383,6 +388,7 @@ class S3Storage implements WritableStorageInterface
     {
         $sha1Hash = sha1_file($temporaryPathAndFilename);
         $md5Hash = md5_file($temporaryPathAndFilename);
+        $objectName = $this->keyPrefix . $sha1Hash;
 
         $resource = new Resource();
         $resource->setFileSize(filesize($temporaryPathAndFilename));
@@ -390,17 +396,27 @@ class S3Storage implements WritableStorageInterface
         $resource->setSha1($sha1Hash);
         $resource->setMd5($md5Hash);
 
-        $objectName = $this->keyPrefix . $sha1Hash;
-        $options = array(
-            'Bucket' => $this->bucketName,
-            'Body' => fopen($temporaryPathAndFilename, 'rb'),
-            'ContentLength' => $resource->getFileSize(),
-            'ContentType' => $resource->getMediaType(),
-            'Key' => $objectName
-        );
+        try {
+            $this->s3Client->headObject([
+                'Bucket' => $this->bucketName,
+                'Key' => $objectName
+            ]);
+            $objectAlreadyExists = true;
+        } catch (S3Exception $e) {
+            if ($e->getAwsErrorCode() !== 'NotFound') {
+                throw $e;
+            }
+            $objectAlreadyExists = false;
+        }
 
-        if (!$this->s3Client->doesObjectExist($this->bucketName, $this->keyPrefix . $sha1Hash)) {
-            $this->s3Client->putObject($options);
+        if (!$objectAlreadyExists) {
+            $this->s3Client->putObject([
+                'Bucket' => $this->bucketName,
+                'Body' => fopen($temporaryPathAndFilename, 'rb'),
+                'ContentLength' => $resource->getFileSize(),
+                'ContentType' => $resource->getMediaType(),
+                'Key' => $objectName
+            ]);
             $this->systemLogger->log(sprintf('Successfully imported resource as object "%s" into bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $resource->getMd5() ?: 'unknown'), LOG_INFO);
         } else {
             $this->systemLogger->log(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName), LOG_INFO);
