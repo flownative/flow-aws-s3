@@ -175,7 +175,7 @@ class S3Target implements TargetInterface
                 $result = $this->s3Client->listObjects($requestArguments);
                 $this->existingObjectsInfo[] = $result->get('Contents');
                 if ($result->get('IsTruncated')) {
-                    $requestArguments['marker'] = $result->get('NextMarker');
+                    $requestArguments['Marker'] = $result->get('NextMarker');
                 }
             } while ($result->get('IsTruncated'));
         }
