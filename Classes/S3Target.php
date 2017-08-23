@@ -303,11 +303,22 @@ class S3Target implements TargetInterface
     public function getPublicPersistentResourceUri(PersistentResource $resource)
     {
         if ($this->baseUri != '') {
-            return $this->baseUri . $this->getRelativePublicationPathAndFilename($resource);
+            return $this->baseUri . $this->encodeRelativePathAndFilenameForUri($this->getRelativePublicationPathAndFilename($resource));
         } else {
             return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
         }
     }
+
+	/**
+	 * Applies rawurlencode() to all path segments of the given $relativePathAndFilename
+	 *
+	 * @param string $relativePathAndFilename
+	 * @return string
+	 */
+	protected function encodeRelativePathAndFilenameForUri($relativePathAndFilename)
+	{
+		return implode('/', array_map('rawurlencode', explode('/', $relativePathAndFilename)));
+	}
 
     /**
      * Publishes the specified source file to this target, with the given relative path.
