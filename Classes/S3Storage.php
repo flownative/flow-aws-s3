@@ -172,11 +172,19 @@ class S3Storage implements WritableStorageInterface
             } catch (\Exception $e) {
                 throw new Exception(sprintf('Could import the content stream to temporary file "%s".', $temporaryTargetPathAndFilename), 1428915486);
             }
-        } else {
+        } elseif(preg_match('#^(\w+/){1,2}\w+\.\w+$#',$source)) {
+            // we have a valid filepath
             try {
                 copy($source, $temporaryTargetPathAndFilename);
             } catch (\Exception $e) {
                 throw new Exception(sprintf('Could not copy the file from "%s" to temporary file "%s".', $source, $temporaryTargetPathAndFilename), 1428915488);
+            }
+        } else {
+            // we have data in $source
+            try {
+                file_put_contents($temporaryTargetPathAndFilename, $source);
+            } catch (\Exception $e) {
+                throw new Exception(sprintf('Could not store given data file to temporary file "%s".', $temporaryTargetPathAndFilename), 1510400576);
             }
         }
 
