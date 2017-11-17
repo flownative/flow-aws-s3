@@ -231,7 +231,11 @@ class S3Target implements TargetInterface
      */
     public function getPublicStaticResourceUri($relativePathAndFilename)
     {
-        return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $relativePathAndFilename);
+        if ($this->baseUri != '') {
+            return $this->baseUri . $relativePathAndFilename;
+        } else {
+            return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $relativePathAndFilename);
+        }
     }
 
     /**
