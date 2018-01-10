@@ -189,7 +189,7 @@ class S3Target implements TargetInterface
             } while ($result->get('IsTruncated'));
         }
 
-        $obsoleteObjects = array_fill_keys($this->existingObjectsInfo, true);
+        $potentiallyObsoleteObjects = array_fill_keys($this->existingObjectsInfo, true);
 
         $storage = $collection->getStorage();
         if ($storage instanceof S3Storage) {
@@ -200,9 +200,9 @@ class S3Target implements TargetInterface
             foreach ($collection->getObjects($callback) as $object) {
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
-                if (array_key_exists($objectName, $obsoleteObjects)) {
+                if (array_key_exists($objectName, $potentiallyObsoleteObjects)) {
                     $this->systemLogger->log(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getMd5() ?: 'unknown', $this->bucketName), LOG_DEBUG);
-                    unset($obsoleteObjects[$objectName]);
+                    unset($potentiallyObsoleteObjects[$objectName]);
                 } else {
                     $options = array(
                         'ACL' => 'public-read',
@@ -227,11 +227,11 @@ class S3Target implements TargetInterface
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
-                unset($obsoleteObjects[$objectName]);
+                unset($potentiallyObsoleteObjects[$objectName]);
             }
         }
 
-        foreach (array_keys($obsoleteObjects) as $relativePathAndFilename) {
+        foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
             $this->systemLogger->log(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName), LOG_DEBUG);
             $this->s3Client->deleteObject(array(
                 'Bucket' => $this->bucketName,
