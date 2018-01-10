@@ -167,20 +167,21 @@ class S3Target implements TargetInterface
             $this->existingObjectsInfo = array();
             $requestArguments = array(
                 'Bucket' => $this->bucketName,
-                'Delimiter' => '/',
                 'Prefix' => $this->keyPrefix
             );
 
             do {
-                $result = $this->s3Client->listObjects($requestArguments);
-                $this->existingObjectsInfo[] = $result->get('Contents');
+                $result = $this->s3Client->listObjectsV2($requestArguments);
+                foreach ($result->get('Contents') as $item) {
+                    $this->existingObjectsInfo[] = $item['Key'];
+                }
                 if ($result->get('IsTruncated')) {
-                    $requestArguments['marker'] = $result->get('NextMarker');
+                    $requestArguments['ContinuationToken'] = $result->get('NextContinuationToken');
                 }
             } while ($result->get('IsTruncated'));
         }
 
-        $obsoleteObjects = array_fill_keys(array_keys($this->existingObjectsInfo), true);
+        $obsoleteObjects = array_fill_keys($this->existingObjectsInfo, true);
 
         $storage = $collection->getStorage();
         if ($storage instanceof S3Storage) {
@@ -191,31 +192,37 @@ class S3Target implements TargetInterface
             foreach ($collection->getObjects() as $object) {
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
-                $options = array(
-                    'ACL' => 'public-read',
-                    'Bucket' => $this->bucketName,
-                    'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
-                    'ContentType' => $object->getMediaType(),
-                    'MetadataDirective' => 'REPLACE',
-                    'Key' => $objectName
-                );
-                try {
-                    $this->s3Client->copyObject($options);
-                } catch (S3Exception $e) {
-                    throw new Exception(sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage()), 1431009234);
+                if (array_key_exists($objectName, $obsoleteObjects)) {
+                    $this->systemLogger->log(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $this->bucketName), LOG_DEBUG);
+                    unset($obsoleteObjects[$objectName]);
+                } else {
+                    $options = array(
+                        'ACL' => 'public-read',
+                        'Bucket' => $this->bucketName,
+                        'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
+                        'ContentType' => $object->getMediaType(),
+                        'MetadataDirective' => 'REPLACE',
+                        'Key' => $objectName
+                    );
+                    try {
+                        $this->s3Client->copyObject($options);
+                    } catch (S3Exception $e) {
+                        throw new Exception(sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage()), 1431009234);
+                    }
+                    $this->systemLogger->log(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName), LOG_DEBUG);
                 }
-                $this->systemLogger->log(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName), LOG_DEBUG);
-                unset($obsoleteObjects[$this->getRelativePublicationPathAndFilename($object)]);
             }
         } else {
             foreach ($collection->getObjects() as $object) {
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
-                unset($obsoleteObjects[$this->getRelativePublicationPathAndFilename($object)]);
+                $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
+                unset($obsoleteObjects[$objectName]);
             }
         }
 
         foreach (array_keys($obsoleteObjects) as $relativePathAndFilename) {
+            $this->systemLogger->log(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName), LOG_DEBUG);
             $this->s3Client->deleteObject(array(
                 'Bucket' => $this->bucketName,
                 'Key' => $this->keyPrefix . $relativePathAndFilename
