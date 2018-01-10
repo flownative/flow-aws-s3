@@ -193,7 +193,7 @@ class S3Target implements TargetInterface
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 if (array_key_exists($objectName, $obsoleteObjects)) {
-                    $this->systemLogger->log(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $this->bucketName), LOG_DEBUG);
+                    $this->systemLogger->log(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getMd5() ?: 'unknown', $this->bucketName), LOG_DEBUG);
                     unset($obsoleteObjects[$objectName]);
                 } else {
                     $options = array(
