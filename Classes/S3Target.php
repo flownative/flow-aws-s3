@@ -278,14 +278,14 @@ class S3Target implements TargetInterface
                 $this->s3Client->copyObject($options);
                 $this->systemLogger->log(sprintf('Successfully published resource as object "%s" (MD5: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $storage->getBucketName(), $this->bucketName), LOG_DEBUG);
             } catch (S3Exception $e) {
-                $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage()));
+                $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage());
                 $this->systemLogger->logException($e);
                 $this->messageCollector->append($message);
             }
         } else {
             $sourceStream = $resource->getStream();
             if ($sourceStream === false) {
-                $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s because there seems to be no corresponding data in the storage.', $resource->getSha1(), $collection->getName();
+                $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s because there seems to be no corresponding data in the storage.', $resource->getSha1(), $collection->getName());
                 $this->messageCollector->append($message);
                 return;
             }
