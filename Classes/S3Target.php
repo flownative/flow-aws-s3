@@ -357,8 +357,10 @@ class S3Target implements TargetInterface
     {
         $objectName = $this->keyPrefix . $relativeTargetPathAndFilename;
         $options = array(
-            'ContentLength' => $metaData->getFileSize(),
-            'ContentType' => $metaData->getMediaType()
+	    'params' => array(
+                'ContentLength' => $metaData->getFileSize(),
+                'ContentType' => $metaData->getMediaType()
+	    )
         );
 
         try {
