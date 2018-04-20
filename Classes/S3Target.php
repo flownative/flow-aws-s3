@@ -180,8 +180,10 @@ class S3Target implements TargetInterface
 
             do {
                 $result = $this->s3Client->listObjectsV2($requestArguments);
-                foreach ($result->get('Contents') as $item) {
-                    $this->existingObjectsInfo[] = $item['Key'];
+                if ($result->get('Contents')) {
+                    foreach ($result->get('Contents') as $item) {
+                        $this->existingObjectsInfo[] = $item['Key'];
+                    }
                 }
                 if ($result->get('IsTruncated')) {
                     $requestArguments['ContinuationToken'] = $result->get('NextContinuationToken');
