@@ -68,7 +68,7 @@ class S3Target implements TargetInterface
     protected $s3Client;
 
     /**
-     * @Flow\InjectConfiguration("profiles.default")
+     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default")
      * @var array
      */
     protected $s3DefaultProfile;
@@ -133,7 +133,7 @@ class S3Target implements TargetInterface
      *
      * @return void
      */
-    public function initializeObject()
+    public function registerClient()
     {
         $clientOptions = $this->s3DefaultProfile;
 
@@ -179,7 +179,7 @@ class S3Target implements TargetInterface
             );
 
             do {
-                $result = $this->s3Client->listObjectsV2($requestArguments);
+                $result = $this->getClient()->listObjectsV2($requestArguments);
                 if ($result->get('Contents')) {
                     foreach ($result->get('Contents') as $item) {
                         $this->existingObjectsInfo[] = $item['Key'];
@@ -215,7 +215,7 @@ class S3Target implements TargetInterface
                         'Key' => $objectName
                     );
                     try {
-                        $this->s3Client->copyObject($options);
+                        $this->getClient()->copyObject($options);
                         $this->systemLogger->log(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName), LOG_DEBUG);
                     } catch (S3Exception $e) {
                         $message = sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage());
@@ -235,7 +235,7 @@ class S3Target implements TargetInterface
 
         foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
             $this->systemLogger->log(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName), LOG_DEBUG);
-            $this->s3Client->deleteObject(array(
+            $this->getClient()->deleteObject(array(
                 'Bucket' => $this->bucketName,
                 'Key' => $this->keyPrefix . $relativePathAndFilename
             ));
@@ -253,7 +253,7 @@ class S3Target implements TargetInterface
         if ($this->baseUri != '') {
             return $this->baseUri . $relativePathAndFilename;
         } else {
-            return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $relativePathAndFilename);
+            return $this->getClient()->getObjectUrl($this->bucketName, $this->keyPrefix . $relativePathAndFilename);
         }
     }
 
@@ -283,7 +283,7 @@ class S3Target implements TargetInterface
                     'MetadataDirective' => 'REPLACE',
                     'Key' => $objectName
                 );
-                $this->s3Client->copyObject($options);
+                $this->getClient()->copyObject($options);
                 $this->systemLogger->log(sprintf('Successfully published resource as object "%s" (MD5: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $storage->getBucketName(), $this->bucketName), LOG_DEBUG);
             } catch (S3Exception $e) {
                 $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage());
@@ -311,7 +311,7 @@ class S3Target implements TargetInterface
     {
         try {
             $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
-            $this->s3Client->deleteObject(array(
+            $this->getClient()->deleteObject(array(
                 'Bucket' => $this->bucketName,
                 'Key' => $objectName
             ));
@@ -332,7 +332,7 @@ class S3Target implements TargetInterface
         if ($this->baseUri != '') {
             return $this->baseUri . $this->encodeRelativePathAndFilenameForUri($this->getRelativePublicationPathAndFilename($resource));
         } else {
-            return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
+            return $this->getClient()->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
         }
     }
 
@@ -364,7 +364,7 @@ class S3Target implements TargetInterface
         );
 
         try {
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, 'public-read', $options);
+            $this->getClient()->upload($this->bucketName, $objectName, $sourceStream, 'public-read', $options);
             $this->systemLogger->log(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'), LOG_DEBUG);
         } catch (\Exception $e) {
             $this->systemLogger->log(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()), LOG_DEBUG);
@@ -391,5 +391,14 @@ class S3Target implements TargetInterface
             $pathAndFilename = $object->getSha1() . '/' . $object->getFilename();
         }
         return $pathAndFilename;
+    }
+
+    /**
+     * @return S3Client
+     */
+    private function getClient()
+    {
+        $this->registerClient();
+        return $this->s3Client;
     }
 }
