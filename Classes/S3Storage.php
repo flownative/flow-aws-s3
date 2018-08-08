@@ -68,7 +68,7 @@ class S3Storage implements WritableStorageInterface
     protected $s3Client;
 
     /**
-     * @Flow\InjectConfiguration("profiles.default")
+     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default")
      * @var array
      */
     protected $s3DefaultProfile;
@@ -111,11 +111,13 @@ class S3Storage implements WritableStorageInterface
      *
      * @return void
      */
-    public function initializeObject()
+    public function registerClient()
     {
-        $clientOptions = $this->s3DefaultProfile;
-
-        $this->s3Client = new S3Client($clientOptions);
+        if ($this->s3Client !== null) {
+            return;
+        }
+        
+        $this->s3Client = new S3Client($this->s3DefaultProfile);
         $this->s3Client->registerStreamWrapper();
     }
 
@@ -211,8 +213,8 @@ class S3Storage implements WritableStorageInterface
         $resource->setCollectionName($collectionName);
         $resource->setSha1($sha1Hash);
         $resource->setMd5($md5Hash);
-
-        $this->s3Client->putObject(array(
+        
+        $this->getClient()->putObject(array(
             'Bucket' => $this->bucketName,
             'Body' => $content,
             'ContentLength' => $resource->getFileSize(),
@@ -261,7 +263,7 @@ class S3Storage implements WritableStorageInterface
         $resource->setSha1($sha1Hash);
         $resource->setMd5($md5Hash);
 
-        $this->s3Client->putObject(array(
+        $this->getClient()->putObject(array(
             'Bucket' => $this->bucketName,
             'Body' => fopen($newSourcePathAndFilename, 'rb'),
             'ContentLength' => $resource->getFileSize(),
@@ -281,7 +283,7 @@ class S3Storage implements WritableStorageInterface
      */
     public function deleteResource(PersistentResource $resource)
     {
-        $this->s3Client->deleteObject(array(
+        $this->getClient()->deleteObject(array(
             'Bucket' => $this->bucketName,
             'Key' => $this->keyPrefix . $resource->getSha1()
         ));
@@ -397,7 +399,7 @@ class S3Storage implements WritableStorageInterface
         $resource->setMd5($md5Hash);
 
         try {
-            $this->s3Client->headObject([
+            $this->getClient()->headObject([
                 'Bucket' => $this->bucketName,
                 'Key' => $objectName
             ]);
@@ -410,7 +412,7 @@ class S3Storage implements WritableStorageInterface
         }
 
         if (!$objectAlreadyExists) {
-            $this->s3Client->putObject([
+            $this->getClient()->putObject([
                 'Bucket' => $this->bucketName,
                 'Body' => fopen($temporaryPathAndFilename, 'rb'),
                 'ContentLength' => $resource->getFileSize(),
@@ -423,5 +425,14 @@ class S3Storage implements WritableStorageInterface
         }
 
         return $resource;
+    }
+
+    /**
+     * @return S3Client
+     */
+    private function getClient()
+    {
+        $this->registerClient();
+        return $this->s3Client;
     }
 }
