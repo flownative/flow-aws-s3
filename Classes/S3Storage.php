@@ -287,6 +287,7 @@ class S3Storage implements WritableStorageInterface
     public function getStreamByResource(PersistentResource $resource)
     {
         try {
+            $this->registerClient();
             return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
         } catch (\Exception $e) {
             if (strpos($e->getMessage(), '<Code>NoSuchKey</Code>') !== false) {
@@ -310,6 +311,7 @@ class S3Storage implements WritableStorageInterface
     public function getStreamByResourcePath($relativePath)
     {
         try {
+            $this->registerClient();
             return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . ltrim('/', $relativePath), 'r');
         } catch (\Exception $e) {
             if (strpos($e->getMessage(), '<Code>NoSuchKey</Code>') !== false) {
@@ -349,6 +351,7 @@ class S3Storage implements WritableStorageInterface
         $objects = array();
         $that = $this;
         $bucketName = $this->bucketName;
+        $this->registerClient();
 
         foreach ($this->resourceRepository->findByCollectionName($collection->getName()) as $resource) {
             /** @var \Neos\Flow\ResourceManagement\PersistentResource $resource */
