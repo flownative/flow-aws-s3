@@ -135,9 +135,10 @@ class S3Target implements TargetInterface
      */
     public function registerClient()
     {
-        $clientOptions = $this->s3DefaultProfile;
-
-        $this->s3Client = new S3Client($clientOptions);
+        if ($this->s3Client !== null) {
+            return;
+        }
+        $this->s3Client = new S3Client($this->s3DefaultProfile);
         $this->s3Client->registerStreamWrapper();
     }
 
@@ -396,7 +397,7 @@ class S3Target implements TargetInterface
     /**
      * @return S3Client
      */
-    private function getClient()
+    protected function getClient()
     {
         $this->registerClient();
         return $this->s3Client;

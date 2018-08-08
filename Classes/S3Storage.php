@@ -430,7 +430,7 @@ class S3Storage implements WritableStorageInterface
     /**
      * @return S3Client
      */
-    private function getClient()
+    protected function getClient()
     {
         $this->registerClient();
         return $this->s3Client;
