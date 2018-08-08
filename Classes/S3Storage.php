@@ -107,21 +107,6 @@ class S3Storage implements WritableStorageInterface
     }
 
     /**
-     * Initialize the S3 Client
-     *
-     * @return void
-     */
-    public function registerClient()
-    {
-        if ($this->s3Client !== null) {
-            return;
-        }
-        
-        $this->s3Client = new S3Client($this->s3DefaultProfile);
-        $this->s3Client->registerStreamWrapper();
-    }
-
-    /**
      * Returns the instance name of this storage
      *
      * @return string
@@ -425,6 +410,21 @@ class S3Storage implements WritableStorageInterface
         }
 
         return $resource;
+    }
+
+    /**
+     * Initialize the S3 Client
+     *
+     * @return void
+     */
+    protected function registerClient()
+    {
+        if ($this->s3Client !== null) {
+            return;
+        }
+
+        $this->s3Client = new S3Client($this->s3DefaultProfile);
+        $this->s3Client->registerStreamWrapper();
     }
 
     /**
