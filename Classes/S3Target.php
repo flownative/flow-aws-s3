@@ -16,6 +16,7 @@ use Neos\Flow\ResourceManagement\PersistentResource;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Flow\ResourceManagement\ResourceMetaDataInterface;
 use Neos\Flow\ResourceManagement\Target\TargetInterface;
+use Neos\Flow\Log\PsrSystemLoggerInterface;
 
 /**
  * A resource publishing target based on Amazon S3
@@ -75,7 +76,7 @@ class S3Target implements TargetInterface
 
     /**
      * @Flow\Inject
-     * @var \Neos\Flow\Log\SystemLoggerInterface
+     * @var PsrSystemLoggerInterface
      */
     protected $systemLogger;
 
@@ -203,7 +204,7 @@ class S3Target implements TargetInterface
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 if (array_key_exists($objectName, $potentiallyObsoleteObjects)) {
-                    $this->systemLogger->log(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getMd5() ?: 'unknown', $this->bucketName), LOG_DEBUG);
+                    $this->systemLogger->debug(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getMd5() ?: 'unknown', $this->bucketName));
                     unset($potentiallyObsoleteObjects[$objectName]);
                 } else {
                     $options = array(
@@ -216,10 +217,11 @@ class S3Target implements TargetInterface
                     );
                     try {
                         $this->s3Client->copyObject($options);
-                        $this->systemLogger->log(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName), LOG_DEBUG);
+                        $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName));
                     } catch (S3Exception $e) {
                         $message = sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage());
-                        $this->systemLogger->logException($e);
+//                        $this->systemLogger->logException($e);
+                        $this->systemLogger->critical($e);
                         $this->messageCollector->append($message);
                     }
                 }
@@ -234,7 +236,7 @@ class S3Target implements TargetInterface
         }
 
         foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
-            $this->systemLogger->log(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName), LOG_DEBUG);
+            $this->systemLogger->debug(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName));
             $this->s3Client->deleteObject(array(
                 'Bucket' => $this->bucketName,
                 'Key' => $this->keyPrefix . $relativePathAndFilename
@@ -284,10 +286,10 @@ class S3Target implements TargetInterface
                     'Key' => $objectName
                 );
                 $this->s3Client->copyObject($options);
-                $this->systemLogger->log(sprintf('Successfully published resource as object "%s" (MD5: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $storage->getBucketName(), $this->bucketName), LOG_DEBUG);
+                $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (MD5: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
             } catch (S3Exception $e) {
                 $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage());
-                $this->systemLogger->logException($e);
+                $this->systemLogger->critical($e);
                 $this->messageCollector->append($message);
             }
         } else {
@@ -315,7 +317,7 @@ class S3Target implements TargetInterface
                 'Bucket' => $this->bucketName,
                 'Key' => $objectName
             ));
-            $this->systemLogger->log(sprintf('Successfully unpublished resource as object "%s" (MD5: %s) from bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $this->bucketName), LOG_DEBUG);
+            $this->systemLogger->debug(sprintf('Successfully unpublished resource as object "%s" (MD5: %s) from bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $this->bucketName));
         } catch (\Exception $e) {
         }
     }
@@ -367,9 +369,9 @@ class S3Target implements TargetInterface
 
         try {
             $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, 'public-read', $options);
-            $this->systemLogger->log(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'), LOG_DEBUG);
+            $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'));
         } catch (\Exception $e) {
-            $this->systemLogger->log(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()), LOG_DEBUG);
+            $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()));
             if (is_resource($sourceStream)) {
                 fclose($sourceStream);
             }
