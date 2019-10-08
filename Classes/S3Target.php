@@ -16,7 +16,7 @@ use Neos\Flow\ResourceManagement\PersistentResource;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Flow\ResourceManagement\ResourceMetaDataInterface;
 use Neos\Flow\ResourceManagement\Target\TargetInterface;
-use Neos\Flow\Log\PsrSystemLoggerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * A resource publishing target based on Amazon S3
@@ -76,7 +76,7 @@ class S3Target implements TargetInterface
 
     /**
      * @Flow\Inject
-     * @var PsrSystemLoggerInterface
+     * @var LoggerInterface
      */
     protected $systemLogger;
 
@@ -220,7 +220,6 @@ class S3Target implements TargetInterface
                         $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName));
                     } catch (S3Exception $e) {
                         $message = sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage());
-//                        $this->systemLogger->logException($e);
                         $this->systemLogger->critical($e);
                         $this->messageCollector->append($message);
                     }

@@ -17,7 +17,7 @@ use Neos\Flow\ResourceManagement\Storage\Exception;
 use Neos\Flow\ResourceManagement\Storage\StorageObject;
 use Neos\Flow\ResourceManagement\Storage\WritableStorageInterface;
 use Neos\Flow\Utility\Environment;
-use Neos\Flow\Log\PsrSystemLoggerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * A resource storage based on AWS S3
@@ -76,7 +76,7 @@ class S3Storage implements WritableStorageInterface
 
     /**
      * @Flow\Inject
-     * @var PsrSystemLoggerInterface
+     * @var LoggerInterface
      */
     protected $systemLogger;
 
@@ -171,7 +171,7 @@ class S3Storage implements WritableStorageInterface
                 stream_copy_to_stream($source, $target);
                 fclose($target);
             } catch (\Exception $e) {
-                throw new Exception(sprintf('Could import the content stream to temporary file "%s".', $temporaryTargetPathAndFilename), 1428915486);
+                throw new Exception(sprintf('Could not import the content stream to temporary file "%s".', $temporaryTargetPathAndFilename), 1428915486);
             }
         } else {
             try {
