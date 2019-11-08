@@ -17,6 +17,7 @@ use Neos\Flow\ResourceManagement\Storage\Exception;
 use Neos\Flow\ResourceManagement\Storage\StorageObject;
 use Neos\Flow\ResourceManagement\Storage\WritableStorageInterface;
 use Neos\Flow\Utility\Environment;
+use Psr\Log\LoggerInterface;
 
 /**
  * A resource storage based on AWS S3
@@ -75,7 +76,7 @@ class S3Storage implements WritableStorageInterface
 
     /**
      * @Flow\Inject
-     * @var \Neos\Flow\Log\SystemLoggerInterface
+     * @var LoggerInterface
      */
     protected $systemLogger;
 
@@ -170,7 +171,7 @@ class S3Storage implements WritableStorageInterface
                 stream_copy_to_stream($source, $target);
                 fclose($target);
             } catch (\Exception $e) {
-                throw new Exception(sprintf('Could import the content stream to temporary file "%s".', $temporaryTargetPathAndFilename), 1428915486);
+                throw new Exception(sprintf('Could not import the content stream to temporary file "%s".', $temporaryTargetPathAndFilename), 1428915486);
             }
         } else {
             try {
@@ -306,7 +307,7 @@ class S3Storage implements WritableStorageInterface
                 return false;
             }
             $message = sprintf('Could not retrieve stream for resource %s (s3://%s/%s%s). %s', $resource->getFilename(), $this->bucketName, $this->keyPrefix, $resource->getSha1(), $e->getMessage());
-            $this->systemLogger->log($message, \LOG_ERR);
+            $this->systemLogger->error($message);
             return false;
         }
     }
@@ -329,7 +330,7 @@ class S3Storage implements WritableStorageInterface
                 return false;
             }
             $message = sprintf('Could not retrieve stream for resource (s3://%s/%s%s). %s', $this->bucketName, $this->keyPrefix, ltrim('/', $relativePath), $e->getMessage());
-            $this->systemLogger->log($message, \LOG_ERR);
+            $this->systemLogger->error($message);
             return false;
         }
     }
@@ -417,9 +418,9 @@ class S3Storage implements WritableStorageInterface
                 'ContentType' => $resource->getMediaType(),
                 'Key' => $objectName
             ]);
-            $this->systemLogger->log(sprintf('Successfully imported resource as object "%s" into bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $resource->getMd5() ?: 'unknown'), LOG_INFO);
+            $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $resource->getMd5() ?: 'unknown'));
         } else {
-            $this->systemLogger->log(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName), LOG_INFO);
+            $this->systemLogger->info(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName));
         }
 
         return $resource;
