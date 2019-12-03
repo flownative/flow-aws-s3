@@ -57,6 +57,14 @@ class S3Target implements TargetInterface
     protected $baseUri;
 
     /**
+     * if TRUE (default), resources which are not anymore part of the storage will be removed
+     * from the target as well. If set to FALSE, your target will only ever grow, never shrink.
+     *
+     * @var boolean
+     */
+    protected $unpublishResources = true;
+
+    /**
      * Internal cache for known storages, indexed by storage name
      *
      * @var array<\Neos\Flow\ResourceManagement\Storage\StorageInterface>
@@ -120,6 +128,9 @@ class S3Target implements TargetInterface
                     break;
                 case 'baseUri':
                     $this->baseUri = $value;
+                    break;
+                case 'unpublishResources':
+                    $this->unpublishResources = (bool)$value;
                     break;
                 default:
                     if ($value !== null) {
@@ -234,12 +245,16 @@ class S3Target implements TargetInterface
             }
         }
 
-        foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
-            $this->systemLogger->debug(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName));
-            $this->s3Client->deleteObject(array(
-                'Bucket' => $this->bucketName,
-                'Key' => $this->keyPrefix . $relativePathAndFilename
-            ));
+        if ($this->unpublishResources !== false) {
+            foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
+                $this->systemLogger->debug(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName));
+                $this->s3Client->deleteObject(array(
+                    'Bucket' => $this->bucketName,
+                    'Key' => $this->keyPrefix . $relativePathAndFilename
+                ));
+            }
+        } else {
+            $this->systemLogger->debug(sprintf('Skipping resource unpublishing from bucket "%s", because configuration option "unpublishResources" is FALSE.', $this->bucketName));
         }
     }
 
@@ -310,6 +325,11 @@ class S3Target implements TargetInterface
      */
     public function unpublishResource(PersistentResource $resource)
     {
+        if ($this->unpublishResources === false) {
+            $this->systemLogger->debug(sprintf('Skipping resource unpublishing %s from bucket "%s", because configuration option "unpublishResources" is FALSE.', $resource->getMd5() ?: 'unknown', $this->bucketName));
+            return;
+        }
+
         try {
             $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
             $this->s3Client->deleteObject(array(

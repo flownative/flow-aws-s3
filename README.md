@@ -32,7 +32,7 @@ In order to communicate with the AWS web service, you need to provide the creden
 to S3 (see next section for instructions for setting up the user in AWS IAM). Add the following configuration to the
 `Settings.yaml` for your desired Flow context (for example in `Configuration/Production/Settings.yaml`) and make sure
 to replace key, secret and region with your own data:
-  
+
 ```yaml
 Flownative:
   Aws:
@@ -46,14 +46,14 @@ Flownative:
 ```
 
 You can test your settings by executing the `connect` command. If you restricted access to a particular sub path of
-a bucket, you must specify the bucket and key prefix: 
+a bucket, you must specify the bucket and key prefix:
 
 ```bash
     $ ./flow s3:connect --bucket test.storage.net --prefix sites/s3-test/
     Access list of objects in bucket "test.storage.neos" with key prefix "sites/s3-test/" ...
     Writing test object into bucket (arn:aws:s3:::test.storage.neos/sites/s3-test/Flownative.Aws.S3.ConnectionTest.txt) ...
     Deleting test object from bucket ...
-    OK    
+    OK
 ```
 
 Note that it does make a difference if you specify the prefix with a leading slash "/" or without, because the corresponding
@@ -300,7 +300,7 @@ Flownative:
 Google Cloud Storage (GCS) is an offering by Google which is very similar to AWS S3. In fact, GCS supports an S3-compatible
 endpoint which allows you to use Google's storage as a replacement for Amazon's S3. However, note that if you
 access GCS through the S3 compatible service endpoint, you won't be able to use the full feature set of Google Cloud
-Storage and you cannot easily restrict access for different users to specific buckets or sub paths. 
+Storage and you cannot easily restrict access for different users to specific buckets or sub paths.
 
 GCS does not have a limit for the number of buckets you can have for one account, therefore you don't necessarily need
 to share buckets across sites or projects. The following instructions assume that you use one dedicated bucket for
@@ -327,4 +327,23 @@ Flownative:
             key: 'GOOGABCDEFG123456789'
             secret: 'abcdefgHIJKLMNOP1234567890QRSTUVWXYZabcd'
           endpoint: 'https://storage.googleapis.com/mybucket.flownative.net'
+```
+
+## Preventing unpublishing of resources in the target
+
+There are certain situations (e.g. when having a two-stack CMS setup), where one needs to prevent unpublishing of images
+or other resources, for some time.
+
+Thus, the S3 Target option `unpublishResources` can be set to `false`, to prevent removing data from the S3 Target:
+
+```yaml
+Neos:
+  Flow:
+    resource:
+      targets:
+        s3PersistentResourcesTarget:
+          target: 'Flownative\Aws\S3\S3Target'
+          targetOptions:
+            unpublishResources: false
+            # ... other options here ...
 ```
