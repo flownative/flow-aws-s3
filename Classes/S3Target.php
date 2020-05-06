@@ -24,6 +24,13 @@ use Psr\Log\LoggerInterface;
 class S3Target implements TargetInterface
 {
     /**
+     * The ACL when uploading a file
+     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default.acl")
+     * @var string
+     */
+    protected $acl;
+
+    /**
      * Name which identifies this resource target
      *
      * @var string
@@ -208,7 +215,7 @@ class S3Target implements TargetInterface
                     unset($potentiallyObsoleteObjects[$objectName]);
                 } else {
                     $options = array(
-                        'ACL' => 'public-read',
+                        'ACL' => $this->acl,
                         'Bucket' => $this->bucketName,
                         'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
                         'ContentType' => $object->getMediaType(),
@@ -277,7 +284,7 @@ class S3Target implements TargetInterface
                 $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
                 $options = array(
-                    'ACL' => 'public-read',
+                    'ACL' => $this->acl,
                     'Bucket' => $this->bucketName,
                     'CopySource' => urlencode($sourceObjectArn),
                     'ContentType'=> $resource->getMediaType(),
