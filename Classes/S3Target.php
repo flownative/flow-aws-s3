@@ -205,7 +205,7 @@ class S3Target implements TargetInterface
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 if (array_key_exists($objectName, $potentiallyObsoleteObjects)) {
                     $this->systemLogger->debug(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getMd5() ?: 'unknown', $this->bucketName));
-                    unset($potentiallyObsoleteObjects[$objectName]);
+                    $potentiallyObsoleteObjects[$objectName] = false;
                 } else {
                     $options = array(
                         'ACL' => 'public-read',
@@ -230,11 +230,14 @@ class S3Target implements TargetInterface
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
-                unset($potentiallyObsoleteObjects[$objectName]);
+                $potentiallyObsoleteObjects[$objectName] = false;
             }
         }
 
         foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
+            if (!$potentiallyObsoleteObjects[$relativePathAndFilename]) {
+                continue;
+            }	
             $this->systemLogger->debug(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName));
             $this->s3Client->deleteObject(array(
                 'Bucket' => $this->bucketName,
