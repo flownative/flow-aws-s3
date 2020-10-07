@@ -412,7 +412,7 @@ class S3Storage implements WritableStorageInterface
                 'ContentType' => $resource->getMediaType(),
                 'Key' => $objectName
             ]);
-            $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $resource->getMd5() ?: 'unknown'));
+            $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $resource->getSha1() ?: 'unknown'));
         } else {
             $this->systemLogger->info(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName));
         }
