@@ -9,6 +9,7 @@ namespace Flownative\Aws\S3;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Log\Utility\LogEnvironment;
 use Neos\Flow\ResourceManagement\CollectionInterface;
 use Neos\Flow\ResourceManagement\Exception;
 use Neos\Flow\ResourceManagement\Publishing\MessageCollector;
@@ -220,7 +221,7 @@ class S3Target implements TargetInterface
                         $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (SHA1: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getSha1() ?: 'unknown', $storageBucketName, $this->bucketName));
                     } catch (S3Exception $e) {
                         $message = sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage());
-                        $this->systemLogger->critical($e);
+                        $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
                         $this->messageCollector->append($message);
                     }
                 }
@@ -291,7 +292,7 @@ class S3Target implements TargetInterface
                 $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
             } catch (S3Exception $e) {
                 $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage());
-                $this->systemLogger->critical($e);
+                $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
                 $this->messageCollector->append($message);
             }
         } else {

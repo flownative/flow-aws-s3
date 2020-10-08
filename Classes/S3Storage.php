@@ -9,6 +9,7 @@ namespace Flownative\Aws\S3;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Log\Utility\LogEnvironment;
 use Neos\Flow\ResourceManagement\CollectionInterface;
 use Neos\Flow\ResourceManagement\PersistentResource;
 use Neos\Flow\ResourceManagement\ResourceManager;
@@ -303,7 +304,7 @@ class S3Storage implements WritableStorageInterface
                 return false;
             }
             $message = sprintf('Could not retrieve stream for resource %s (s3://%s/%s%s). %s', $resource->getFilename(), $this->bucketName, $this->keyPrefix, $resource->getSha1(), $e->getMessage());
-            $this->systemLogger->error($message);
+            $this->systemLogger->error($message, LogEnvironment::fromMethodName(__METHOD__));
             return false;
         }
     }
@@ -326,7 +327,7 @@ class S3Storage implements WritableStorageInterface
                 return false;
             }
             $message = sprintf('Could not retrieve stream for resource (s3://%s/%s%s). %s', $this->bucketName, $this->keyPrefix, ltrim('/', $relativePath), $e->getMessage());
-            $this->systemLogger->error($message);
+            $this->systemLogger->error($message, LogEnvironment::fromMethodName(__METHOD__));
             return false;
         }
     }
@@ -412,9 +413,9 @@ class S3Storage implements WritableStorageInterface
                 'ContentType' => $resource->getMediaType(),
                 'Key' => $objectName
             ]);
-            $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $resource->getSha1() ?: 'unknown'));
+            $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $resource->getSha1() ?: 'unknown'), LogEnvironment::fromMethodName(__METHOD__));
         } else {
-            $this->systemLogger->info(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName));
+            $this->systemLogger->info(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName), LogEnvironment::fromMethodName(__METHOD__));
         }
 
         return $resource;
