@@ -203,7 +203,6 @@ class S3Storage implements WritableStorageInterface
     public function importResourceFromContent($content, $collectionName)
     {
         $sha1Hash = sha1($content);
-        $md5Hash = md5($content);
         $filename = $sha1Hash;
 
         $resource = new PersistentResource();
@@ -211,7 +210,6 @@ class S3Storage implements WritableStorageInterface
         $resource->setFileSize(strlen($content));
         $resource->setCollectionName($collectionName);
         $resource->setSha1($sha1Hash);
-        $resource->setMd5($md5Hash);
 
         $this->s3Client->putObject(array(
             'Bucket' => $this->bucketName,
@@ -253,14 +251,12 @@ class S3Storage implements WritableStorageInterface
         }
 
         $sha1Hash = sha1_file($newSourcePathAndFilename);
-        $md5Hash = md5_file($newSourcePathAndFilename);
 
         $resource = new PersistentResource();
         $resource->setFilename($originalFilename);
         $resource->setCollectionName($collectionName);
         $resource->setFileSize(filesize($newSourcePathAndFilename));
         $resource->setSha1($sha1Hash);
-        $resource->setMd5($md5Hash);
 
         $this->s3Client->putObject(array(
             'Bucket' => $this->bucketName,
@@ -388,14 +384,12 @@ class S3Storage implements WritableStorageInterface
     protected function importTemporaryFile($temporaryPathAndFilename, $collectionName)
     {
         $sha1Hash = sha1_file($temporaryPathAndFilename);
-        $md5Hash = md5_file($temporaryPathAndFilename);
         $objectName = $this->keyPrefix . $sha1Hash;
 
         $resource = new PersistentResource();
         $resource->setFileSize(filesize($temporaryPathAndFilename));
         $resource->setCollectionName($collectionName);
         $resource->setSha1($sha1Hash);
-        $resource->setMd5($md5Hash);
 
         try {
             $this->s3Client->headObject([
@@ -418,7 +412,7 @@ class S3Storage implements WritableStorageInterface
                 'ContentType' => $resource->getMediaType(),
                 'Key' => $objectName
             ]);
-            $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $resource->getMd5() ?: 'unknown'));
+            $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $resource->getSha1() ?: 'unknown'));
         } else {
             $this->systemLogger->info(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName));
         }
