@@ -409,8 +409,8 @@ class S3Storage implements WritableStorageInterface
             $this->s3Client->putObject([
                 'Bucket' => $this->bucketName,
                 'Body' => fopen($temporaryPathAndFilename, 'rb'),
-                'ContentLength' => $resource->getFileSize(),
-                'ContentType' => $resource->getMediaType(),
+                'Content-Length' => $resource->getFileSize(),
+                'Content-Type' => $resource->getMediaType(),
                 'Key' => $objectName
             ]);
             $this->systemLogger->info(sprintf('Successfully imported resource as object "%s" into bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $resource->getSha1() ?: 'unknown'), LogEnvironment::fromMethodName(__METHOD__));
