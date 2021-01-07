@@ -13,12 +13,12 @@ Flownative:
           signature_version: 'v4'
 
           # Define credentials for authentication
-          credentials:
-            key: 'ABCD123EFG456HIJ7890'
-            secret: 'aBc123DEf456GHi789JKlMNopqRsTuVWXyz12345'
+          #credentials:
+            #key: 'ABCD123EFG456HIJ7890'
+            #secret: 'aBc123DEf456GHi789JKlMNopqRsTuVWXyz12345'
 
           # If the region is not specified, the default region will be used (according to the S3 service)
-          region: 'us-west-1'
+          #region: 'us-west-1'
 
           # URI Scheme of the base URL (e.g.. 'https', 'http') used when endpoint is not supplied
           scheme: 'https'
