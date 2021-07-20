@@ -328,3 +328,18 @@ Flownative:
             secret: 'abcdefgHIJKLMNOP1234567890QRSTUVWXYZabcd'
           endpoint: 'https://storage.googleapis.com/mybucket.flownative.net'
 ```
+
+## Path-style endpoints
+
+When using a custom endpoint for a non-AWS, S3-compatible storage, the use of this option may be needed.
+
+```yaml
+Flownative:
+  Aws:
+    S3:
+      profiles:
+        default:
+          endpoint: 'https://abc.objectstorage.provider.tld/my-bucket-name'
+          # Prevents the AWS client to prepend the bucket name to the hostname
+          use_path_style_endpoint: true
+```
