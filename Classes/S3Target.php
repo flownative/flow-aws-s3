@@ -219,7 +219,9 @@ class S3Target implements TargetInterface
                     unset($potentiallyObsoleteObjects[$objectName]);
                 } else {
                     $options = array(
-                        'ACL' => 'public-read',
+                        // public-read ACL is not useful when using CloudFront. In our project, we have restrictive policies (public-access block), and the public-read
+                        // ACL conflicts with that. So we need to disable it here.
+                        //'ACL' => 'public-read',
                         'Bucket' => $this->bucketName,
                         'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
                         'ContentType' => $object->getMediaType(),
@@ -292,7 +294,9 @@ class S3Target implements TargetInterface
                 $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
                 $options = array(
-                    'ACL' => 'public-read',
+                    // public-read ACL is not useful when using CloudFront. In our project, we have restrictive policies (public-access block), and the public-read
+                    // ACL conflicts with that. So we need to disable it here.
+                    //'ACL' => 'public-read',
                     'Bucket' => $this->bucketName,
                     'CopySource' => urlencode($sourceObjectArn),
                     'ContentType'=> $resource->getMediaType(),
@@ -387,7 +391,9 @@ class S3Target implements TargetInterface
         );
 
         try {
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, 'public-read', $options);
+            // public-read ACL is not useful when using CloudFront. In our project, we have restrictive policies (public-access block), and the public-read
+            // ACL conflicts with that. So we need to disable it here.
+            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, null, $options);
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'));
         } catch (\Exception $e) {
             $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()));
