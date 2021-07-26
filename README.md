@@ -347,3 +347,19 @@ Neos:
             unpublishResources: false
             # ... other options here ...
 ```
+
+## Disable public-read ACL
+
+The canned ACL "public-read" is not useful in some cases, e.g. when using CloudFront with conflicting restrictive policies. 
+With this option the ACL setting for the target can be disabled/removed.
+
+```yaml
+Neos:
+  Flow:
+    resource:
+      targets:
+        s3PersistentResourcesTarget:
+          target: 'Flownative\Aws\S3\S3Target'
+          targetOptions:
+            accessPolicyEnabled: false
+```

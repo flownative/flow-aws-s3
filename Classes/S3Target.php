@@ -65,6 +65,13 @@ class S3Target implements TargetInterface
     protected $unpublishResources = true;
 
     /**
+     * If `true` (default) the S3 ACL is set to `public-read`. If `false` no ACL option will be set.
+     *
+     * @var boolean
+     */
+    protected $accessPolicyEnabled = true;
+
+    /**
      * Internal cache for known storages, indexed by storage name
      *
      * @var array<\Neos\Flow\ResourceManagement\Storage\StorageInterface>
@@ -131,6 +138,9 @@ class S3Target implements TargetInterface
                     break;
                 case 'unpublishResources':
                     $this->unpublishResources = (bool)$value;
+                    break;
+                case 'accessPolicyEnabled':
+                    $this->accessPolicyEnabled = (bool)$value;
                     break;
                 default:
                     if ($value !== null) {
@@ -219,15 +229,15 @@ class S3Target implements TargetInterface
                     unset($potentiallyObsoleteObjects[$objectName]);
                 } else {
                     $options = array(
-                        // public-read ACL is not useful when using CloudFront. In our project, we have restrictive policies (public-access block), and the public-read
-                        // ACL conflicts with that. So we need to disable it here.
-                        //'ACL' => 'public-read',
                         'Bucket' => $this->bucketName,
                         'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
                         'ContentType' => $object->getMediaType(),
                         'MetadataDirective' => 'REPLACE',
                         'Key' => $objectName
                     );
+                    if ($this->accessPolicyEnabled !== false) {
+                        $options['ACL'] = 'public-read';
+                    }
                     try {
                         $this->s3Client->copyObject($options);
                         $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName));
@@ -294,15 +304,15 @@ class S3Target implements TargetInterface
                 $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
                 $options = array(
-                    // public-read ACL is not useful when using CloudFront. In our project, we have restrictive policies (public-access block), and the public-read
-                    // ACL conflicts with that. So we need to disable it here.
-                    //'ACL' => 'public-read',
                     'Bucket' => $this->bucketName,
                     'CopySource' => urlencode($sourceObjectArn),
                     'ContentType'=> $resource->getMediaType(),
                     'MetadataDirective' => 'REPLACE',
                     'Key' => $objectName
                 );
+                if ($this->accessPolicyEnabled !== false) {
+                    $options['ACL'] = 'public-read';
+                }
                 $this->s3Client->copyObject($options);
                 $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (MD5: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
             } catch (S3Exception $e) {
@@ -391,9 +401,7 @@ class S3Target implements TargetInterface
         );
 
         try {
-            // public-read ACL is not useful when using CloudFront. In our project, we have restrictive policies (public-access block), and the public-read
-            // ACL conflicts with that. So we need to disable it here.
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, null, $options);
+            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->accessPolicyEnabled !== false ? 'public-read' : null, $options);
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'));
         } catch (\Exception $e) {
             $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()));
