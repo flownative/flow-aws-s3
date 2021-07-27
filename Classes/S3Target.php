@@ -257,16 +257,17 @@ class S3Target implements TargetInterface
             }
         }
 
-        if ($this->unpublishResources !== false) {
-            foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
-                $this->systemLogger->debug(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName));
-                $this->s3Client->deleteObject(array(
-                    'Bucket' => $this->bucketName,
-                    'Key' => $this->keyPrefix . $relativePathAndFilename
-                ));
-            }
-        } else {
+        if ($this->unpublishResources === false) {
             $this->systemLogger->debug(sprintf('Skipping resource unpublishing from bucket "%s", because configuration option "unpublishResources" is FALSE.', $this->bucketName));
+            return;
+        }
+
+        foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
+            $this->systemLogger->debug(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName));
+            $this->s3Client->deleteObject(array(
+                'Bucket' => $this->bucketName,
+                'Key' => $this->keyPrefix . $relativePathAndFilename
+            ));
         }
     }
 
