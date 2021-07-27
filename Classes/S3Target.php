@@ -264,6 +264,9 @@ class S3Target implements TargetInterface
         }
 
         foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
+            if (!$potentiallyObsoleteObjects[$relativePathAndFilename]) {
+                continue;
+            }
             $this->systemLogger->debug(sprintf('Deleted obsolete resource "%s" from bucket "%s"', $relativePathAndFilename, $this->bucketName));
             $this->s3Client->deleteObject(array(
                 'Bucket' => $this->bucketName,
