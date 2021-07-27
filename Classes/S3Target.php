@@ -9,6 +9,7 @@ namespace Flownative\Aws\S3;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Log\Utility\LogEnvironment;
 use Neos\Flow\ResourceManagement\CollectionInterface;
 use Neos\Flow\ResourceManagement\Exception;
 use Neos\Flow\ResourceManagement\Publishing\MessageCollector;
@@ -225,25 +226,25 @@ class S3Target implements TargetInterface
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 if (array_key_exists($objectName, $potentiallyObsoleteObjects)) {
-                    $this->systemLogger->debug(sprintf('The resource object "%s" (MD5: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getMd5() ?: 'unknown', $this->bucketName));
-                    unset($potentiallyObsoleteObjects[$objectName]);
+                    $this->systemLogger->debug(sprintf('The resource object "%s" (SHA1: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getSha1() ?: 'unknown', $this->bucketName));
+                    $potentiallyObsoleteObjects[$objectName] = false;
                 } else {
-                    $options = array(
+                    $options = [
                         'Bucket' => $this->bucketName,
                         'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
                         'ContentType' => $object->getMediaType(),
                         'MetadataDirective' => 'REPLACE',
                         'Key' => $objectName
-                    );
+                    ];
                     if ($this->accessPolicyEnabled !== false) {
                         $options['ACL'] = 'public-read';
                     }
                     try {
                         $this->s3Client->copyObject($options);
-                        $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (MD5: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getMd5() ?: 'unknown', $storageBucketName, $this->bucketName));
+                        $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (SHA1: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getSha1() ?: 'unknown', $storageBucketName, $this->bucketName));
                     } catch (S3Exception $e) {
                         $message = sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage());
-                        $this->systemLogger->critical($e);
+                        $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
                         $this->messageCollector->append($message);
                     }
                 }
@@ -253,7 +254,7 @@ class S3Target implements TargetInterface
                 /** @var \Neos\Flow\ResourceManagement\Storage\StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
-                unset($potentiallyObsoleteObjects[$objectName]);
+                $potentiallyObsoleteObjects[$objectName] = false;
             }
         }
 
@@ -304,21 +305,21 @@ class S3Target implements TargetInterface
             try {
                 $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
-                $options = array(
+                $options = [
                     'Bucket' => $this->bucketName,
                     'CopySource' => urlencode($sourceObjectArn),
                     'ContentType'=> $resource->getMediaType(),
                     'MetadataDirective' => 'REPLACE',
                     'Key' => $objectName
-                );
+                ];
                 if ($this->accessPolicyEnabled !== false) {
                     $options['ACL'] = 'public-read';
                 }
                 $this->s3Client->copyObject($options);
-                $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (MD5: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
+                $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
             } catch (S3Exception $e) {
                 $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage());
-                $this->systemLogger->critical($e);
+                $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
                 $this->messageCollector->append($message);
             }
         } else {
@@ -351,7 +352,7 @@ class S3Target implements TargetInterface
                 'Bucket' => $this->bucketName,
                 'Key' => $objectName
             ));
-            $this->systemLogger->debug(sprintf('Successfully unpublished resource as object "%s" (MD5: %s) from bucket "%s"', $objectName, $resource->getMd5() ?: 'unknown', $this->bucketName));
+            $this->systemLogger->debug(sprintf('Successfully unpublished resource as object "%s" (SHA1: %s) from bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $this->bucketName));
         } catch (\Exception $e) {
         }
     }
@@ -403,9 +404,9 @@ class S3Target implements TargetInterface
 
         try {
             $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->accessPolicyEnabled !== false ? 'public-read' : null, $options);
-            $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with MD5 hash "%s"', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown'));
+            $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown'));
         } catch (\Exception $e) {
-            $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with MD5 hash "%s": %s', $objectName, $this->bucketName, $metaData->getMd5() ?: 'unknown', $e->getMessage()));
+            $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with SHA1 hash "%s": %s', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown', $e->getMessage()));
             if (is_resource($sourceStream)) {
                 fclose($sourceStream);
             }
