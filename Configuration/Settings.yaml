@@ -6,6 +6,10 @@ Flownative:
         # For more documentation regarding options, see http://docs.aws.amazon.com/aws-sdk-php/v2/guide/configuration.html#client-configuration-options
         default:
 
+          # Access Control List. Override in your own Settings.yaml with '' to not provide public read access to an object in S3
+          # To access these objects use SignedCookie or SignedURL method in combination with AWS CloudFront
+          acl: 'public-read'
+
           # Select the API version to use
           version: '2006-03-01'
 

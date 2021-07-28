@@ -365,8 +365,10 @@ Neos:
 
 ## Disable public-read ACL
 
-The canned ACL "public-read" is not useful in some cases, e.g. when using CloudFront with conflicting restrictive policies. 
-With this option the ACL setting for the target can be disabled/removed.
+The ACL for a target defaults to the setting "Flownative.Aws.S3.profiles.default.acl" but can be overwritten via targetOption "acl".
+
+So in case you want a different ACL than "public-read", e.g. when using CloudFront with conflicting restrictive policies. 
+You can either just set the above configuration setting or adjust your specific target configuration:
 
 ```yaml
 Neos:
@@ -376,5 +378,5 @@ Neos:
         s3PersistentResourcesTarget:
           target: 'Flownative\Aws\S3\S3Target'
           targetOptions:
-            accessPolicyEnabled: false
+            acl: ''
 ```

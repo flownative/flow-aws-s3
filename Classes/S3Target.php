@@ -25,6 +25,13 @@ use Psr\Log\LoggerInterface;
 class S3Target implements TargetInterface
 {
     /**
+     * The ACL when uploading a file
+     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default.acl")
+     * @var string
+     */
+    protected $acl;
+
+    /**
      * Name which identifies this resource target
      *
      * @var string
@@ -143,6 +150,9 @@ class S3Target implements TargetInterface
                 case 'accessPolicyEnabled':
                     $this->accessPolicyEnabled = (bool)$value;
                     break;
+                case 'acl':
+                    $this->acl = (string)$value;
+                    break;
                 default:
                     if ($value !== null) {
                         throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource S3Target. Please check your settings.', $key, $name), 1428928226);
@@ -230,15 +240,13 @@ class S3Target implements TargetInterface
                     $potentiallyObsoleteObjects[$objectName] = false;
                 } else {
                     $options = [
+                        'ACL' => $this->acl,
                         'Bucket' => $this->bucketName,
                         'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
                         'ContentType' => $object->getMediaType(),
                         'MetadataDirective' => 'REPLACE',
                         'Key' => $objectName
                     ];
-                    if ($this->accessPolicyEnabled !== false) {
-                        $options['ACL'] = 'public-read';
-                    }
                     try {
                         $this->s3Client->copyObject($options);
                         $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (SHA1: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getSha1() ?: 'unknown', $storageBucketName, $this->bucketName));
@@ -309,15 +317,13 @@ class S3Target implements TargetInterface
                 $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
                 $options = [
+                    'ACL' => $this->acl,
                     'Bucket' => $this->bucketName,
                     'CopySource' => urlencode($sourceObjectArn),
                     'ContentType'=> $resource->getMediaType(),
                     'MetadataDirective' => 'REPLACE',
                     'Key' => $objectName
                 ];
-                if ($this->accessPolicyEnabled !== false) {
-                    $options['ACL'] = 'public-read';
-                }
                 $this->s3Client->copyObject($options);
                 $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
             } catch (S3Exception $e) {
