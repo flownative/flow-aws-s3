@@ -58,6 +58,21 @@ class S3Target implements TargetInterface
     protected $baseUri;
 
     /**
+     * if TRUE (default), resources which are not anymore part of the storage will be removed
+     * from the target as well. If set to FALSE, your target will only ever grow, never shrink.
+     *
+     * @var boolean
+     */
+    protected $unpublishResources = true;
+
+    /**
+     * If `true` (default) the S3 ACL is set to `public-read`. If `false` no ACL option will be set.
+     *
+     * @var boolean
+     */
+    protected $accessPolicyEnabled = true;
+
+    /**
      * Internal cache for known storages, indexed by storage name
      *
      * @var array<\Neos\Flow\ResourceManagement\Storage\StorageInterface>
@@ -121,6 +136,12 @@ class S3Target implements TargetInterface
                     break;
                 case 'baseUri':
                     $this->baseUri = $value;
+                    break;
+                case 'unpublishResources':
+                    $this->unpublishResources = (bool)$value;
+                    break;
+                case 'accessPolicyEnabled':
+                    $this->accessPolicyEnabled = (bool)$value;
                     break;
                 default:
                     if ($value !== null) {
@@ -209,13 +230,15 @@ class S3Target implements TargetInterface
                     $potentiallyObsoleteObjects[$objectName] = false;
                 } else {
                     $options = [
-                        'ACL' => 'public-read',
                         'Bucket' => $this->bucketName,
                         'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
                         'ContentType' => $object->getMediaType(),
                         'MetadataDirective' => 'REPLACE',
                         'Key' => $objectName
                     ];
+                    if ($this->accessPolicyEnabled !== false) {
+                        $options['ACL'] = 'public-read';
+                    }
                     try {
                         $this->s3Client->copyObject($options);
                         $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (SHA1: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getSha1() ?: 'unknown', $storageBucketName, $this->bucketName));
@@ -233,6 +256,11 @@ class S3Target implements TargetInterface
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 $potentiallyObsoleteObjects[$objectName] = false;
             }
+        }
+
+        if ($this->unpublishResources === false) {
+            $this->systemLogger->debug(sprintf('Skipping resource unpublishing from bucket "%s", because configuration option "unpublishResources" is FALSE.', $this->bucketName));
+            return;
         }
 
         foreach (array_keys($potentiallyObsoleteObjects) as $relativePathAndFilename) {
@@ -281,13 +309,15 @@ class S3Target implements TargetInterface
                 $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
                 $options = [
-                    'ACL' => 'public-read',
                     'Bucket' => $this->bucketName,
                     'CopySource' => urlencode($sourceObjectArn),
                     'ContentType'=> $resource->getMediaType(),
                     'MetadataDirective' => 'REPLACE',
                     'Key' => $objectName
                 ];
+                if ($this->accessPolicyEnabled !== false) {
+                    $options['ACL'] = 'public-read';
+                }
                 $this->s3Client->copyObject($options);
                 $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
             } catch (S3Exception $e) {
@@ -314,6 +344,11 @@ class S3Target implements TargetInterface
      */
     public function unpublishResource(PersistentResource $resource)
     {
+        if ($this->unpublishResources === false) {
+            $this->systemLogger->debug(sprintf('Skipping resource unpublishing %s from bucket "%s", because configuration option "unpublishResources" is FALSE.', $resource->getMd5() ?: 'unknown', $this->bucketName));
+            return;
+        }
+
         try {
             $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
             $this->s3Client->deleteObject(array(
@@ -371,7 +406,7 @@ class S3Target implements TargetInterface
         );
 
         try {
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, 'public-read', $options);
+            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->accessPolicyEnabled !== false ? 'public-read' : null, $options);
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown'));
         } catch (\Exception $e) {
             $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with SHA1 hash "%s": %s', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown', $e->getMessage()));
