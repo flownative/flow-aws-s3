@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Flownative\Aws\S3;
 
 /*
@@ -89,7 +91,7 @@ class S3Storage implements WritableStorageInterface
      * @param array $options Options for this storage
      * @throws Exception
      */
-    public function __construct($name, array $options = [])
+    public function __construct(string $name, array $options = [])
     {
         $this->name = $name;
         $this->bucketName = $name;
@@ -114,7 +116,7 @@ class S3Storage implements WritableStorageInterface
      *
      * @return void
      */
-    public function initializeObject()
+    public function initializeObject(): void
     {
         $clientOptions = $this->s3DefaultProfile;
 
@@ -127,7 +129,7 @@ class S3Storage implements WritableStorageInterface
      *
      * @return string
      */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
@@ -137,7 +139,7 @@ class S3Storage implements WritableStorageInterface
      *
      * @return string
      */
-    public function getBucketName()
+    public function getBucketName(): string
     {
         return $this->bucketName;
     }
@@ -147,7 +149,7 @@ class S3Storage implements WritableStorageInterface
      *
      * @return string
      */
-    public function getKeyPrefix()
+    public function getKeyPrefix(): string
     {
         return $this->keyPrefix;
     }
@@ -166,7 +168,7 @@ class S3Storage implements WritableStorageInterface
      * @throws FilesException
      * @throws \Exception
      */
-    public function importResource($source, $collectionName)
+    public function importResource($source, $collectionName): PersistentResource
     {
         $temporaryTargetPathAndFilename = $this->environment->getPathToTemporaryDirectory() . uniqid('Flownative_Aws_S3_') . '.tmp';
 
@@ -204,7 +206,7 @@ class S3Storage implements WritableStorageInterface
      * @return PersistentResource A resource object representing the imported resource
      * @api
      */
-    public function importResourceFromContent($content, $collectionName)
+    public function importResourceFromContent($content, $collectionName): PersistentResource
     {
         $sha1Hash = sha1($content);
         $filename = $sha1Hash;
@@ -242,7 +244,7 @@ class S3Storage implements WritableStorageInterface
      * @throws \Exception
      * @api
      */
-    public function importUploadedResource(array $uploadInfo, $collectionName)
+    public function importUploadedResource(array $uploadInfo, string $collectionName): PersistentResource
     {
         $pathInfo = pathinfo($uploadInfo['name']);
         $originalFilename = $pathInfo['basename'];
@@ -283,7 +285,7 @@ class S3Storage implements WritableStorageInterface
      * @return boolean TRUE if removal was successful
      * @api
      */
-    public function deleteResource(PersistentResource $resource)
+    public function deleteResource(PersistentResource $resource): bool
     {
         $this->s3Client->deleteObject([
             'Bucket' => $this->bucketName,
@@ -300,7 +302,7 @@ class S3Storage implements WritableStorageInterface
      * @return bool|resource A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
      * @api
      */
-    public function getStreamByResource(PersistentResource $resource)
+    public function getStreamByResource(PersistentResource $resource): bool
     {
         try {
             return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'rb');
@@ -322,7 +324,7 @@ class S3Storage implements WritableStorageInterface
      * @return bool|resource A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
      * @api
      */
-    public function getStreamByResourcePath($relativePath)
+    public function getStreamByResourcePath($relativePath): bool
     {
         try {
             return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . ltrim('/', $relativePath), 'rb');
@@ -342,7 +344,7 @@ class S3Storage implements WritableStorageInterface
      * @return array<\Neos\Flow\ResourceManagement\Storage\StorageObject>
      * @api
      */
-    public function getObjects()
+    public function getObjects(): array
     {
         $objects = [];
         foreach ($this->resourceManager->getCollectionsByStorage($this) as $collection) {
@@ -360,7 +362,7 @@ class S3Storage implements WritableStorageInterface
      * @return array<\Neos\Flow\ResourceManagement\Storage\StorageObject>
      * @api
      */
-    public function getObjectsByCollection(CollectionInterface $collection)
+    public function getObjectsByCollection(CollectionInterface $collection): array
     {
         $objects = [];
         $bucketName = $this->bucketName;
@@ -386,7 +388,7 @@ class S3Storage implements WritableStorageInterface
      * @param string $collectionName Name of the collection to import into
      * @return PersistentResource The imported resource
      */
-    protected function importTemporaryFile($temporaryPathAndFilename, $collectionName)
+    protected function importTemporaryFile(string $temporaryPathAndFilename, string $collectionName): PersistentResource
     {
         $sha1Hash = sha1_file($temporaryPathAndFilename);
         $objectName = $this->keyPrefix . $sha1Hash;

@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Flownative\Aws\S3\Command;
 
 /*
@@ -36,7 +38,7 @@ class S3CommandController extends CommandController
      * @param string $prefix
      * @return void
      */
-    public function connectCommand($bucket = null, $prefix = '')
+    public function connectCommand(string $bucket = null, string $prefix = ''): void
     {
         try {
             $s3Client = new S3Client($this->s3DefaultProfile);
@@ -83,7 +85,7 @@ class S3CommandController extends CommandController
      *
      * @return void
      */
-    public function listBucketsCommand()
+    public function listBucketsCommand(): void
     {
         try {
             $s3Client = new S3Client($this->s3DefaultProfile);
@@ -116,7 +118,7 @@ class S3CommandController extends CommandController
      * @param string $bucket Name of the bucket
      * @return void
      */
-    public function flushBucketCommand($bucket)
+    public function flushBucketCommand(string $bucket): void
     {
         try {
             $s3Client = new S3Client($this->s3DefaultProfile);
@@ -143,7 +145,7 @@ class S3CommandController extends CommandController
      * @param string $key Key to use for the uploaded object, for example "Coffee.jpg" or "MyPictures/Machines/Coffee.jpg". If not specified, the original filename is used.
      * @return void
      */
-    public function uploadCommand($bucket, $file, $key = '')
+    public function uploadCommand(string $bucket, string $file, string $key = ''): void
     {
         if (!file_exists($file)) {
             $this->outputLine('The specified file does not exist.');

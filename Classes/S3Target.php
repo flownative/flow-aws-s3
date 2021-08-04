@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Flownative\Aws\S3;
 
 /*
@@ -128,7 +130,7 @@ class S3Target implements TargetInterface
      * @param array $options Options for this target
      * @throws Exception
      */
-    public function __construct($name, array $options = [])
+    public function __construct(string $name, array $options = [])
     {
         $this->name = $name;
         foreach ($options as $key => $value) {
@@ -167,7 +169,7 @@ class S3Target implements TargetInterface
      *
      * @return void
      */
-    public function initializeObject()
+    public function initializeObject(): void
     {
         $clientOptions = $this->s3DefaultProfile;
 
@@ -180,7 +182,7 @@ class S3Target implements TargetInterface
      *
      * @return string The target instance name
      */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
@@ -190,7 +192,7 @@ class S3Target implements TargetInterface
      *
      * @return string
      */
-    public function getKeyPrefix()
+    public function getKeyPrefix(): string
     {
         return $this->keyPrefix;
     }
@@ -292,7 +294,7 @@ class S3Target implements TargetInterface
      * @param string $relativePathAndFilename Relative path and filename of the static resource
      * @return string The URI
      */
-    public function getPublicStaticResourceUri($relativePathAndFilename)
+    public function getPublicStaticResourceUri($relativePathAndFilename): string
     {
         if ($this->baseUri !== '') {
             return $this->baseUri . $relativePathAndFilename;
@@ -378,7 +380,7 @@ class S3Target implements TargetInterface
      * @param PersistentResource $resource Resource object or the resource hash of the resource
      * @return string The URI
      */
-    public function getPublicPersistentResourceUri(PersistentResource $resource)
+    public function getPublicPersistentResourceUri(PersistentResource $resource): string
     {
         if ($this->baseUri !== '') {
             return $this->baseUri . $this->encodeRelativePathAndFilenameForUri($this->getRelativePublicationPathAndFilename($resource));
@@ -393,7 +395,7 @@ class S3Target implements TargetInterface
      * @param string $relativePathAndFilename
      * @return string
      */
-    protected function encodeRelativePathAndFilenameForUri($relativePathAndFilename)
+    protected function encodeRelativePathAndFilenameForUri(string $relativePathAndFilename): string
     {
         return implode('/', array_map('rawurlencode', explode('/', $relativePathAndFilename)));
     }
@@ -406,7 +408,7 @@ class S3Target implements TargetInterface
      * @param ResourceMetaDataInterface $metaData
      * @throws \Exception
      */
-    protected function publishFile($sourceStream, $relativeTargetPathAndFilename, ResourceMetaDataInterface $metaData)
+    protected function publishFile($sourceStream, string $relativeTargetPathAndFilename, ResourceMetaDataInterface $metaData): void
     {
         $objectName = $this->keyPrefix . $relativeTargetPathAndFilename;
         $options = [
@@ -436,7 +438,7 @@ class S3Target implements TargetInterface
      * @param ResourceMetaDataInterface $object Resource or Storage Object
      * @return string The relative path and filename, for example "c828d0f88ce197be1aff7cc2e5e86b1244241ac6/MyPicture.jpg"
      */
-    protected function getRelativePublicationPathAndFilename(ResourceMetaDataInterface $object)
+    protected function getRelativePublicationPathAndFilename(ResourceMetaDataInterface $object): string
     {
         if ($object->getRelativePublicationPath() !== '') {
             $pathAndFilename = $object->getRelativePublicationPath() . $object->getFilename();
