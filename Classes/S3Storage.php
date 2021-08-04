@@ -17,6 +17,7 @@ use Neos\Flow\ResourceManagement\ResourceRepository;
 use Neos\Flow\ResourceManagement\Storage\Exception;
 use Neos\Flow\ResourceManagement\Storage\StorageObject;
 use Neos\Flow\ResourceManagement\Storage\WritableStorageInterface;
+use Neos\Flow\Utility\Algorithms;
 use Neos\Flow\Utility\Environment;
 use Psr\Log\LoggerInterface;
 
@@ -164,7 +165,7 @@ class S3Storage implements WritableStorageInterface
      */
     public function importResource($source, $collectionName)
     {
-        $temporaryTargetPathAndFilename = $this->environment->getPathToTemporaryDirectory() . uniqid('Flownative_Aws_S3_');
+        $temporaryTargetPathAndFilename = $this->environment->getPathToTemporaryDirectory() . 'Flownative_Aws_S3_' . Algorithms::generateRandomToken(12) . '.tmp';
 
         if (is_resource($source)) {
             try {
@@ -246,7 +247,7 @@ class S3Storage implements WritableStorageInterface
             throw new Exception(sprintf('The temporary file "%s" of the file upload does not exist (anymore).', $sourcePathAndFilename), 1428909075);
         }
 
-        $newSourcePathAndFilename = $this->environment->getPathToTemporaryDirectory() . 'Flownative_Aws_S3_' . uniqid() . '.tmp';
+        $newSourcePathAndFilename = $this->environment->getPathToTemporaryDirectory() . 'Flownative_Aws_S3_' . Algorithms::generateRandomToken(12) . '.tmp';
         if (move_uploaded_file($sourcePathAndFilename, $newSourcePathAndFilename) === false) {
             throw new Exception(sprintf('The uploaded file "%s" could not be moved to the temporary location "%s".', $sourcePathAndFilename, $newSourcePathAndFilename), 1428909076);
         }
