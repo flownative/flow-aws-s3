@@ -45,6 +45,48 @@ Flownative:
           region: 'eu-central-1'
 ```
 
+Right now, you can only define one connection profile, namely the "default" profile. Additional profiles may be supported
+in future versions.
+
+### Set up bucket(s) for your data
+
+You can either create separate buckets for storage and target respectively or use the same bucket as storage
+and target.
+
+How you name those buckets is up to you, the names will be used in the configuration later on.
+
+#### One Bucket
+
+In a one-bucket setup, the same bucket will be used as storage and target. All resources are publicly accessible,
+so Flow can render a URL pointing to a resource right after it was uploaded.
+
+**Note:** The bucket must not block public access to it's contents if you want to serve directly from the bucket.
+
+This setup is fast and saves storage space, because resources do not have to be copied and are only stored once.
+On the downside, the URLs are kind of ugly, because they only consist of a domain, path and the resource's SHA1:
+
+```
+https://s3.eu-central-1.amazonaws.com/storage.neos.example.com/sites/wwwexamplecom/00889c4636cd77876e154796d469955e567ce23c
+``` 
+
+To have meaningful filenames you need to install a reverse  proxy with path rewriting rules in order to simulate these
+filenames or use a CDN (e.g. CloudFront.).
+
+#### Two Buckets
+
+In a two-bucket setup, resources will be duplicated: the original is stored in the "storage" bucket and then
+copied to the "target" bucket. Each time a new resource is created or imported, it will be stored in the
+storage bucket and then automatically published (i.e. copied) into the target bucket.
+
+**Note:** The target bucket must not block public access to it's contents if you want to serve directly from the
+bucket.
+
+You may choose this setup in order to have human- and SEO-friendly URLs pointing to your resources, because
+objects copied into the target bucket can have a more telling name which includes the original filename of
+the resource (see for the `publicPersistentResourceUris` options further below).
+
+### Test your settings
+
 You can test your settings by executing the `connect` command. If you restricted access to a particular sub path of
 a bucket, you must specify the bucket and key prefix:
 
@@ -57,12 +99,9 @@ a bucket, you must specify the bucket and key prefix:
 ```
 
 Note that it does make a difference if you specify the prefix with a leading slash "/" or without, because the corresponding
-policy must match the pattern correctly, as you can see in the next section.
+policy must match the pattern correctly, as you can see later.
 
-Right now, you can only define one connection profile, namely the "default" profile. Additional profiles may be supported
-in future versions.
-
-## IAM Setup
+### IAM Setup
 
 It is best practice to create a user through AWS' Identity and Access Management which is exclusively used for your
 Flow or Neos instance to communicate with S3. This user needs minimal access rights, which can be defined either by
@@ -131,7 +170,7 @@ for a bucket operation](http://docs.aws.amazon.com/AmazonS3/latest/dev/access-co
 
 ## Publish Assets to S3 / Cloudfront
 
-Once the connector package is in place, you add a new publishing target which uses that connect and assign this target
+Once the connector package is in place, you add a new publishing target which uses that connector and assign this target
 to your collection.
 
 ```yaml
@@ -159,6 +198,46 @@ Since the new publishing target will be empty initially, you need to publish you
 ```
 
 This command will upload your files to the target and use the calculated remote URL for all your assets from now on.
+
+## Customizing the Public URLs
+
+The S3 target supports a way to customize the URLs which are presented to the user. Even
+though the paths and filenames used for objects in the buckets is rather fixed (see above for the `baseUri` and
+`keyPrefix` options), you may want to use a reverse proxy or content delivery network to deliver resources
+stored in your target bucket. In that case, you can tell the Target to render URLs according to your own rules.
+It is your responsibility then to make sure that these URLs actually work.
+
+The behaviour depends on the setup being used:
+
+- no pattern and no baseUri set: the URL the S3 client returns for the resource
+- no pattern set: the baseUri, followed by the relative publication path of the
+  resource (if any) or the SHA1, followed by the filename
+
+Let's assume that we have set up a webserver acting as a reverse proxy. Requests to `assets.flownative.com` are
+re-written so that using a URI like `https://assets.flownative.com/a817…cb1/logo.svg` will actually deliver
+a file stored in the Storage bucket using the given SHA1.
+
+You can tell the Target to render URIs like these by defining a pattern with placeholders:
+
+```yaml
+      targets:
+        s3PersistentResourcesTarget:
+          target: 'Flownative\Aws\S3\S3Target'
+          targetOptions:
+            bucket: 'flownativecom.flownative.cloud'
+            baseUri: 'https://assets.flownative.com/'
+            persistentResourceUris:
+              pattern: '{baseUri}{sha1}/{filename}'
+```
+
+The possible placeholders are:
+
+- `{baseUri}` The base URI as defined in the target options
+- `{bucketName}` The target's bucket name
+- `{keyPrefix}` The target's configured key prefix
+- `{sha1}` The resource's SHA1
+- `{filename}` The resource's full filename, for example "logo.svg"
+- `{fileExtension}` The resource's file extension, for example "svg"
 
 ## Switching the Storage of a Collection
 
@@ -190,15 +269,14 @@ assets by the remote storage system, you also add a target that contains your pu
 
 Some notes regarding the configuration:
 
-You must create separate buckets for storage and target respectively, because the storage will remain private and the
-target will potentially be published. Even if it might work using one bucket for both, this is a non-supported setup.
-
-The `keyPrefix` option allows you to share one bucket accross multiple websites or applications. All S3 objects keys
-will be prefiexd by the given string.
+The `keyPrefix` option allows you to share one bucket across multiple websites or applications. All S3 objects keys
+will be prefixed by the given string.
 
 The `baseUri` option defines the root of the publicly accessible address pointing to your published resources. In the
 example above, baseUri points to a Cloudfront subdomain which needs to be set up separately. It is rarely a good idea to
-the public URI of S3 objects directly (like, for example "https://s3.eu-central-1.amazonaws.com/target.neos.example.com/sites/wwwexamplecom/00889c4636cd77876e154796d469955e567ce23c/NeosCMS-2507x3347.jpg") because S3 is usually too slow for being used as a server for common assets on your website. It's good for downloads, but not for your CSS files or photos.
+the public URI of S3 objects directly (like, for example "https://s3.eu-central-1.amazonaws.com/target.neos.example.com/sites/wwwexamplecom/00889c4636cd77876e154796d469955e567ce23c/NeosCMS-2507x3347.jpg") because S3 is usually too
+slow for being used as a server for common assets on your website. It's good for downloads, but not for your CSS files
+or photos.
 
 In order to copy the resources to the new storage we need a temporary collection that uses the storage and the new
 publication target.
@@ -214,7 +292,7 @@ publication target.
             target: 's3PersistentResourcesTarget'
 ```
 
-Now you can use the ``resource:copy`` command (available in Flow 3.1 or Neos 2.1 and higher):
+Now you can use the ``resource:copy`` command:
 
 ```bash
 
@@ -245,6 +323,43 @@ Clear caches and you're done.
 
     $ ./flow flow:cache:flush
 
+```
+
+## Preventing unpublishing of resources in the target
+
+There are certain situations (e.g. when having a two-stack CMS setup), where one needs to prevent unpublishing of images
+or other resources, for some time.
+
+Thus, the S3 Target option `unpublishResources` can be set to `false`, to prevent removing data from the S3 Target:
+
+```yaml
+Neos:
+  Flow:
+    resource:
+      targets:
+        s3PersistentResourcesTarget:
+          target: 'Flownative\Aws\S3\S3Target'
+          targetOptions:
+            unpublishResources: false
+            # ... other options here ...
+```
+
+## Disable public-read ACL
+
+The ACL for a target defaults to the setting "Flownative.Aws.S3.profiles.default.acl" but can be overwritten via targetOption "acl".
+
+So in case you want a different ACL than "public-read", e.g. when using CloudFront with conflicting restrictive policies.
+You can either just set the above configuration setting or adjust your specific target configuration:
+
+```yaml
+Neos:
+  Flow:
+    resource:
+      targets:
+        s3PersistentResourcesTarget:
+          target: 'Flownative\Aws\S3\S3Target'
+          targetOptions:
+            acl: ''
 ```
 
 ## Full Example Configuration for S3
@@ -295,7 +410,24 @@ Flownative:
           region: 'eu-central-1'
 ```
 
+## Path-style endpoints
+
+When using a custom endpoint for a non-AWS, S3-compatible storage, the use of this option may be needed.
+
+```yaml
+Flownative:
+  Aws:
+    S3:
+      profiles:
+        default:
+          endpoint: 'https://abc.objectstorage.provider.tld/my-bucket-name'
+          # Prevents the AWS client to prepend the bucket name to the hostname
+          use_path_style_endpoint: true
+```
+
 ## Using Google Cloud Storage
+
+Note: It might be simple to use our ![Flow GCS connector](https://packagist.org/packages/flownative/google-cloudstorage) instead.
 
 Google Cloud Storage (GCS) is an offering by Google which is very similar to AWS S3. In fact, GCS supports an S3-compatible
 endpoint which allows you to use Google's storage as a replacement for Amazon's S3. However, note that if you
@@ -327,56 +459,4 @@ Flownative:
             key: 'GOOGABCDEFG123456789'
             secret: 'abcdefgHIJKLMNOP1234567890QRSTUVWXYZabcd'
           endpoint: 'https://storage.googleapis.com/mybucket.flownative.net'
-```
-
-## Path-style endpoints
-
-When using a custom endpoint for a non-AWS, S3-compatible storage, the use of this option may be needed.
-
-```yaml
-Flownative:
-  Aws:
-    S3:
-      profiles:
-        default:
-          endpoint: 'https://abc.objectstorage.provider.tld/my-bucket-name'
-          # Prevents the AWS client to prepend the bucket name to the hostname
-          use_path_style_endpoint: true
-```
-
-## Preventing unpublishing of resources in the target
-
-There are certain situations (e.g. when having a two-stack CMS setup), where one needs to prevent unpublishing of images
-or other resources, for some time.
-
-Thus, the S3 Target option `unpublishResources` can be set to `false`, to prevent removing data from the S3 Target:
-
-```yaml
-Neos:
-  Flow:
-    resource:
-      targets:
-        s3PersistentResourcesTarget:
-          target: 'Flownative\Aws\S3\S3Target'
-          targetOptions:
-            unpublishResources: false
-            # ... other options here ...
-```
-
-## Disable public-read ACL
-
-The ACL for a target defaults to the setting "Flownative.Aws.S3.profiles.default.acl" but can be overwritten via targetOption "acl".
-
-So in case you want a different ACL than "public-read", e.g. when using CloudFront with conflicting restrictive policies. 
-You can either just set the above configuration setting or adjust your specific target configuration:
-
-```yaml
-Neos:
-  Flow:
-    resource:
-      targets:
-        s3PersistentResourcesTarget:
-          target: 'Flownative\Aws\S3\S3Target'
-          targetOptions:
-            acl: ''
 ```

@@ -64,6 +64,7 @@ class S3CommandController extends CommandController
                 );
                 $s3Client->deleteObject($options);
             } else {
+                $this->outputLine('Listing buckets ...');
                 $s3Client->listBuckets();
             }
         } catch (\Exception $e) {
@@ -73,6 +74,7 @@ class S3CommandController extends CommandController
             }
             $this->quit(1);
         }
+        $this->outputLine();
         $this->outputLine('OK');
     }
 
