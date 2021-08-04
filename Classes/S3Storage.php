@@ -303,7 +303,7 @@ class S3Storage implements WritableStorageInterface
     public function getStreamByResource(PersistentResource $resource)
     {
         try {
-            return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
+            return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'rb');
         } catch (\Exception $e) {
             if (strpos($e->getMessage(), '<Code>NoSuchKey</Code>') !== false) {
                 return false;
@@ -325,7 +325,7 @@ class S3Storage implements WritableStorageInterface
     public function getStreamByResourcePath($relativePath)
     {
         try {
-            return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . ltrim('/', $relativePath), 'r');
+            return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . ltrim('/', $relativePath), 'rb');
         } catch (\Exception $e) {
             if (strpos($e->getMessage(), '<Code>NoSuchKey</Code>') !== false) {
                 return false;
@@ -371,7 +371,7 @@ class S3Storage implements WritableStorageInterface
             $object->setFilename($resource->getFilename());
             $object->setSha1($resource->getSha1());
             $object->setStream(function () use ($bucketName, $resource) {
-                return fopen('s3://' . $bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
+                return fopen('s3://' . $bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'rb');
             });
             $objects[] = $object;
         }
