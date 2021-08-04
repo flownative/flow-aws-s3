@@ -351,7 +351,7 @@ class S3Target implements TargetInterface
     public function unpublishResource(PersistentResource $resource)
     {
         if ($this->unpublishResources === false) {
-            $this->systemLogger->debug(sprintf('Skipping resource unpublishing %s from bucket "%s", because configuration option "unpublishResources" is FALSE.', $resource->getMd5() ?: 'unknown', $this->bucketName));
+            $this->systemLogger->debug(sprintf('Skipping resource unpublishing %s from bucket "%s", because configuration option "unpublishResources" is FALSE.', $resource->getSha1() ?: 'unknown', $this->bucketName));
             return;
         }
 
