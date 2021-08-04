@@ -1,12 +1,11 @@
 <?php
 namespace Flownative\Aws\S3\Command;
 
-/*                                                                        *
- * This script belongs to the package "Flownative.Aws.S3".                *
- *                                                                        */
+/*
+ * This script belongs to the package "Flownative.Aws.S3".
+ */
 
 use Aws\S3\BatchDelete;
-use Aws\S3\Model\ClearBucket;
 use Aws\S3\S3Client;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Cli\CommandController;
@@ -33,7 +32,7 @@ class S3CommandController extends CommandController
      * not allow listing buckets, you can pass a specific bucket through the "--bucket" argument. In that case, this
      * command will try to retrieve meta data only for that given bucket using the "head bucket" operation.
      *
-     * @param string $bucket If specified, we try to connect by retrieving meta data for this specific bucket only
+     * @param string|null $bucket If specified, we try to connect by retrieving meta data for this specific bucket only
      * @param string $prefix
      * @return void
      */
@@ -47,21 +46,21 @@ class S3CommandController extends CommandController
                 $this->outputLine('Access list of objects in bucket "%s" with key prefix "%s" ...', [$bucket, $prefix]);
                 $s3Client->getPaginator('ListObjects', ['Bucket' => $bucket, 'Prefix' => $prefix]);
 
-                $options = array(
+                $options = [
                     'Bucket' => $bucket,
                     'Body' => 'test',
                     'ContentLength' => 4,
                     'ContentType' => 'text/plain',
                     'Key' => $prefix . 'Flownative.Aws.S3.ConnectionTest.txt'
-                );
+                ];
                 $this->outputLine('Writing test object into bucket (arn:aws:s3:::%s/%s) ...', [$bucket, $options['Key']]);
                 $s3Client->putObject($options);
 
                 $this->outputLine('Deleting test object from bucket ...');
-                $options = array(
+                $options = [
                     'Bucket' => $bucket,
                     'Key' => $prefix . 'Flownative.Aws.S3.ConnectionTest.txt'
-                );
+                ];
                 $s3Client->deleteObject($options);
             } else {
                 $s3Client->listBuckets();
@@ -99,11 +98,11 @@ class S3CommandController extends CommandController
             $this->outputLine('The account currently does not have any buckets.');
         }
 
-        $tableRows = array();
-        $headerRow = array('Bucket Name', 'Creation Date');
+        $tableRows = [];
+        $headerRow = ['Bucket Name', 'Creation Date'];
 
         foreach ($result['Buckets'] as $bucket) {
-            $tableRows[] = array($bucket['Name'], $bucket['CreationDate']);
+            $tableRows[] = [$bucket['Name'], $bucket['CreationDate']];
         }
 
         $this->output->outputTable($tableRows, $headerRow);
@@ -129,7 +128,7 @@ class S3CommandController extends CommandController
             exit;
         }
         $promise->wait();
-        $this->outputLine('Successfully flushed bucket %s.', array($bucket));
+        $this->outputLine('Successfully flushed bucket %s.', [$bucket]);
     }
 
     /**
@@ -157,16 +156,16 @@ class S3CommandController extends CommandController
 
         try {
             $s3Client = new S3Client($this->s3DefaultProfile);
-            $s3Client->putObject(array(
+            $s3Client->putObject([
                 'Key' => $key,
                 'Bucket' => $bucket,
                 'Body' => fopen('file://' . realpath($file), 'rb')
-            ));
+            ]);
         } catch (\Exception $e) {
-            $this->outputLine('Could not upload %s to %s::%s – %s', array($file, $bucket, $key, $e->getMessage()));
+            $this->outputLine('Could not upload %s to %s::%s – %s', [$file, $bucket, $key, $e->getMessage()]);
             $this->quit(1);
         }
 
-        $this->outputLine('Successfully uploaded %s to %s::%s.', array($file, $bucket, $key));
+        $this->outputLine('Successfully uploaded %s to %s::%s.', [$file, $bucket, $key]);
     }
 }

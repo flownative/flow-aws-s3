@@ -1,10 +1,9 @@
 <?php
 namespace Flownative\Aws\S3;
 
-/*                                                                        *
- * This script belongs to the package "Flownative.Aws.S3".                *
- *                                                                        *
- *                                                                        */
+/*
+ * This script belongs to the package "Flownative.Aws.S3".
+ */
 
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
@@ -15,9 +14,11 @@ use Neos\Flow\ResourceManagement\PersistentResource;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Flow\ResourceManagement\ResourceRepository;
 use Neos\Flow\ResourceManagement\Storage\Exception;
+use Neos\Flow\ResourceManagement\Storage\Exception as StorageException;
 use Neos\Flow\ResourceManagement\Storage\StorageObject;
 use Neos\Flow\ResourceManagement\Storage\WritableStorageInterface;
 use Neos\Flow\Utility\Environment;
+use Neos\Utility\Exception\FilesException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -88,7 +89,7 @@ class S3Storage implements WritableStorageInterface
      * @param array $options Options for this storage
      * @throws Exception
      */
-    public function __construct($name, array $options = array())
+    public function __construct($name, array $options = [])
     {
         $this->name = $name;
         $this->bucketName = $name;
@@ -96,10 +97,10 @@ class S3Storage implements WritableStorageInterface
             switch ($key) {
                 case 'bucket':
                     $this->bucketName = $value;
-                    break;
+                break;
                 case 'keyPrefix':
                     $this->keyPrefix = $value;
-                    break;
+                break;
                 default:
                     if ($value !== null) {
                         throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource S3Storage. Please check your settings.', $key, $name), 1428928229);
@@ -160,11 +161,14 @@ class S3Storage implements WritableStorageInterface
      * @param string | resource $source The URI (or local path and filename) or the PHP resource stream to import the resource from
      * @param string $collectionName Name of the collection the new Resource belongs to
      * @return PersistentResource A resource object representing the imported resource
-     * @throws \Neos\Flow\ResourceManagement\Storage\Exception
+     * @throws StorageException
+     * @throws \Neos\Flow\Utility\Exception
+     * @throws FilesException
+     * @throws \Exception
      */
     public function importResource($source, $collectionName)
     {
-        $temporaryTargetPathAndFilename = $this->environment->getPathToTemporaryDirectory() . uniqid('Flownative_Aws_S3_');
+        $temporaryTargetPathAndFilename = $this->environment->getPathToTemporaryDirectory() . uniqid('Flownative_Aws_S3_') . '.tmp';
 
         if (is_resource($source)) {
             try {
@@ -195,10 +199,9 @@ class S3Storage implements WritableStorageInterface
      * important because the resource management will derive the IANA Media Type from it.
      *
      * @param string $content The actual content to import
-     * @return PersistentResource A resource object representing the imported resource
      * @param string $collectionName Name of the collection the new Resource belongs to
      * @return PersistentResource A resource object representing the imported resource
-     * @throws Exception
+     * @return PersistentResource A resource object representing the imported resource
      * @api
      */
     public function importResourceFromContent($content, $collectionName)
@@ -212,13 +215,13 @@ class S3Storage implements WritableStorageInterface
         $resource->setCollectionName($collectionName);
         $resource->setSha1($sha1Hash);
 
-        $this->s3Client->putObject(array(
+        $this->s3Client->putObject([
             'Bucket' => $this->bucketName,
             'Body' => $content,
             'ContentLength' => $resource->getFileSize(),
             'ContentType' => $resource->getMediaType(),
             'Key' => $this->keyPrefix . $sha1Hash
-        ));
+        ]);
 
         return $resource;
     }
@@ -232,8 +235,11 @@ class S3Storage implements WritableStorageInterface
      *
      * @param array $uploadInfo An array detailing the resource to import (expected keys: name, tmp_name)
      * @param string $collectionName Name of the collection this uploaded resource should be part of
-     * @return string A resource object representing the imported resource
-     * @throws Exception
+     * @return PersistentResource A resource object representing the imported resource
+     * @throws StorageException
+     * @throws \Neos\Flow\Utility\Exception
+     * @throws FilesException
+     * @throws \Exception
      * @api
      */
     public function importUploadedResource(array $uploadInfo, $collectionName)
@@ -246,7 +252,7 @@ class S3Storage implements WritableStorageInterface
             throw new Exception(sprintf('The temporary file "%s" of the file upload does not exist (anymore).', $sourcePathAndFilename), 1428909075);
         }
 
-        $newSourcePathAndFilename = $this->environment->getPathToTemporaryDirectory() . 'Flownative_Aws_S3_' . uniqid() . '.tmp';
+        $newSourcePathAndFilename = $this->environment->getPathToTemporaryDirectory() . uniqid('Flownative_Aws_S3_') . '.tmp';
         if (move_uploaded_file($sourcePathAndFilename, $newSourcePathAndFilename) === false) {
             throw new Exception(sprintf('The uploaded file "%s" could not be moved to the temporary location "%s".', $sourcePathAndFilename, $newSourcePathAndFilename), 1428909076);
         }
@@ -259,13 +265,13 @@ class S3Storage implements WritableStorageInterface
         $resource->setFileSize(filesize($newSourcePathAndFilename));
         $resource->setSha1($sha1Hash);
 
-        $this->s3Client->putObject(array(
+        $this->s3Client->putObject([
             'Bucket' => $this->bucketName,
             'Body' => fopen($newSourcePathAndFilename, 'rb'),
             'ContentLength' => $resource->getFileSize(),
             'ContentType' => $resource->getMediaType(),
             'Key' => $this->keyPrefix . $sha1Hash
-        ));
+        ]);
 
         return $resource;
     }
@@ -273,16 +279,16 @@ class S3Storage implements WritableStorageInterface
     /**
      * Deletes the storage data related to the given Resource object
      *
-     * @param \Neos\Flow\ResourceManagement\PersistentResource $resource The Resource to delete the storage data of
+     * @param PersistentResource $resource The Resource to delete the storage data of
      * @return boolean TRUE if removal was successful
      * @api
      */
     public function deleteResource(PersistentResource $resource)
     {
-        $this->s3Client->deleteObject(array(
+        $this->s3Client->deleteObject([
             'Bucket' => $this->bucketName,
             'Key' => $this->keyPrefix . $resource->getSha1()
-        ));
+        ]);
         return true;
     }
 
@@ -290,9 +296,8 @@ class S3Storage implements WritableStorageInterface
      * Returns a stream handle which can be used internally to open / copy the given resource
      * stored in this storage.
      *
-     * @param \Neos\Flow\ResourceManagement\PersistentResource $resource The resource stored in this storage
+     * @param PersistentResource $resource The resource stored in this storage
      * @return bool|resource A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
-     * @throws Exception
      * @api
      */
     public function getStreamByResource(PersistentResource $resource)
@@ -315,7 +320,6 @@ class S3Storage implements WritableStorageInterface
      *
      * @param string $relativePath A path relative to the storage root, for example "MyFirstDirectory/SecondDirectory/Foo.css"
      * @return bool|resource A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
-     * @throws Exception
      * @api
      */
     public function getStreamByResourcePath($relativePath)
@@ -340,33 +344,33 @@ class S3Storage implements WritableStorageInterface
      */
     public function getObjects()
     {
-        $objects = array();
+        $objects = [];
         foreach ($this->resourceManager->getCollectionsByStorage($this) as $collection) {
-            $objects = array_merge($objects, $this->getObjectsByCollection($collection));
+            $objects[] = $this->getObjectsByCollection($collection);
         }
-        return $objects;
+
+        // the empty array covers cases when no loops were made
+        return array_merge([], ...$objects);
     }
 
     /**
      * Retrieve all Objects stored in this storage, filtered by the given collection name
      *
      * @param CollectionInterface $collection
-     * @internal param string $collectionName
      * @return array<\Neos\Flow\ResourceManagement\Storage\StorageObject>
      * @api
      */
     public function getObjectsByCollection(CollectionInterface $collection)
     {
-        $objects = array();
-        $that = $this;
+        $objects = [];
         $bucketName = $this->bucketName;
 
         foreach ($this->resourceRepository->findByCollectionName($collection->getName()) as $resource) {
-            /** @var \Neos\Flow\ResourceManagement\PersistentResource $resource */
+            /** @var PersistentResource $resource */
             $object = new StorageObject();
             $object->setFilename($resource->getFilename());
             $object->setSha1($resource->getSha1());
-            $object->setStream(function () use ($that, $bucketName, $resource) {
+            $object->setStream(function () use ($bucketName, $resource) {
                 return fopen('s3://' . $bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'r');
             });
             $objects[] = $object;
