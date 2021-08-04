@@ -10,6 +10,10 @@ Flownative:
           # To access these objects use SignedCookie or SignedURL method in combination with AWS CloudFront
           acl: 'public-read'
 
+          # If true (default), resources which are not anymore part of the storage will be removed
+          # from the target as well. If set to false, your target will only ever grow, never shrink.
+          unpublishResources: true
+
           # Select the API version to use
           version: '2006-03-01'
 

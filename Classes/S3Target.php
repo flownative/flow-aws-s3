@@ -65,7 +65,7 @@ class S3Target implements TargetInterface
     protected $baseUri;
 
     /**
-     * if TRUE (default), resources which are not anymore part of the storage will be removed
+     * If TRUE (default), resources which are not anymore part of the storage will be removed
      * from the target as well. If set to FALSE, your target will only ever grow, never shrink.
      *
      * @var boolean
