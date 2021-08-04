@@ -26,10 +26,16 @@ class S3Target implements TargetInterface
 {
     /**
      * The ACL when uploading a file
-     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default.acl")
      * @var string
      */
     protected $acl;
+
+    /**
+     * The default ACL
+     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default.acl")
+     * @var string
+     */
+    protected $defaultAcl;
 
     /**
      * Name which identifies this resource target
@@ -185,6 +191,16 @@ class S3Target implements TargetInterface
     }
 
     /**
+     * Returns the ACL when uploading a file
+     *
+     * @return string
+     */
+    public function getAcl()
+    {
+        return isset($this->acl) ? $this->acl : $this->defaultAcl;
+    }
+
+    /**
      * Publishes the whole collection to this target
      *
      * @param \Neos\Flow\ResourceManagement\CollectionInterface $collection The collection to publish
@@ -236,8 +252,8 @@ class S3Target implements TargetInterface
                         'MetadataDirective' => 'REPLACE',
                         'Key' => $objectName
                     ];
-                    if ($this->acl !== '') {
-                        $options['ACL'] = $this->acl;
+                    if ($this->getAcl()) {
+                        $options['ACL'] = $this->getAcl();
                     }
                     try {
                         $this->s3Client->copyObject($options);
@@ -315,8 +331,8 @@ class S3Target implements TargetInterface
                     'MetadataDirective' => 'REPLACE',
                     'Key' => $objectName
                 ];
-                if ($this->acl !== '') {
-                    $options['ACL'] = $this->acl;
+                if ($this->getAcl()) {
+                    $options['ACL'] = $this->getAcl();
                 }
                 $this->s3Client->copyObject($options);
                 $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
@@ -406,7 +422,7 @@ class S3Target implements TargetInterface
         );
 
         try {
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->acl !== '' ? $this->acl : null, $options);
+            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->getAcl() ? $this->getAcl() : null, $options);
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown'));
         } catch (\Exception $e) {
             $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with SHA1 hash "%s": %s', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown', $e->getMessage()));
