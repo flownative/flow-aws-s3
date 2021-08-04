@@ -26,10 +26,16 @@ class S3Target implements TargetInterface
 {
     /**
      * The ACL when uploading a file
-     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default.acl")
      * @var string
      */
     protected $acl;
+
+    /**
+     * The default ACL
+     * @Flow\InjectConfiguration(package="Flownative.Aws.S3", path="profiles.default.acl")
+     * @var string
+     */
+    protected $defaultAcl;
 
     /**
      * Name which identifies this resource target
@@ -71,13 +77,6 @@ class S3Target implements TargetInterface
      * @var boolean
      */
     protected $unpublishResources = true;
-
-    /**
-     * If `true` (default) the S3 ACL is set to `public-read`. If `false` no ACL option will be set.
-     *
-     * @var boolean
-     */
-    protected $accessPolicyEnabled = true;
 
     /**
      * Internal cache for known storages, indexed by storage name
@@ -147,9 +146,6 @@ class S3Target implements TargetInterface
                 case 'unpublishResources':
                     $this->unpublishResources = (bool)$value;
                     break;
-                case 'accessPolicyEnabled':
-                    $this->accessPolicyEnabled = (bool)$value;
-                    break;
                 case 'acl':
                     $this->acl = (string)$value;
                     break;
@@ -192,6 +188,16 @@ class S3Target implements TargetInterface
     public function getKeyPrefix()
     {
         return $this->keyPrefix;
+    }
+
+    /**
+     * Returns the ACL when uploading a file
+     *
+     * @return string
+     */
+    public function getAcl()
+    {
+        return isset($this->acl) ? $this->acl : $this->defaultAcl;
     }
 
     /**
@@ -240,13 +246,15 @@ class S3Target implements TargetInterface
                     $potentiallyObsoleteObjects[$objectName] = false;
                 } else {
                     $options = [
-                        'ACL' => $this->acl,
                         'Bucket' => $this->bucketName,
                         'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
                         'ContentType' => $object->getMediaType(),
                         'MetadataDirective' => 'REPLACE',
                         'Key' => $objectName
                     ];
+                    if ($this->getAcl()) {
+                        $options['ACL'] = $this->getAcl();
+                    }
                     try {
                         $this->s3Client->copyObject($options);
                         $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (SHA1: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getSha1() ?: 'unknown', $storageBucketName, $this->bucketName));
@@ -317,13 +325,15 @@ class S3Target implements TargetInterface
                 $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
                 $options = [
-                    'ACL' => $this->acl,
                     'Bucket' => $this->bucketName,
                     'CopySource' => urlencode($sourceObjectArn),
                     'ContentType'=> $resource->getMediaType(),
                     'MetadataDirective' => 'REPLACE',
                     'Key' => $objectName
                 ];
+                if ($this->getAcl()) {
+                    $options['ACL'] = $this->getAcl();
+                }
                 $this->s3Client->copyObject($options);
                 $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
             } catch (S3Exception $e) {
@@ -412,7 +422,7 @@ class S3Target implements TargetInterface
         );
 
         try {
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->accessPolicyEnabled !== false ? 'public-read' : null, $options);
+            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->getAcl() ? $this->getAcl() : null, $options);
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown'));
         } catch (\Exception $e) {
             $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with SHA1 hash "%s": %s', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown', $e->getMessage()));
