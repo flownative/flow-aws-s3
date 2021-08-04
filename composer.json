@@ -1,7 +1,7 @@
 {
     "name": "flownative/aws-s3",
     "type": "neos-package",
-    "description": "",
+    "description": "This Flow package allows you to store assets (resources) in Amazon's S3",
     "authors": [
         {
             "name": "Robert Lemke",
