@@ -9,8 +9,11 @@ namespace Flownative\Aws\S3\Command;
 
 use Aws\S3\BatchDelete;
 use Aws\S3\S3Client;
+use Flownative\Aws\S3\S3Target;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Cli\CommandController;
+use Neos\Flow\ResourceManagement\ResourceManager;
+use Neos\Flow\ResourceManagement\Storage\StorageObject;
 
 /**
  * S3 command controller for the Flownative.Aws.S3 package
@@ -24,6 +27,21 @@ class S3CommandController extends CommandController
      * @var array
      */
     protected $s3DefaultProfile;
+
+    /**
+     * @Flow\Inject
+     * @var ResourceManager
+     */
+    protected $resourceManager;
+
+    /**
+     * @var S3Client
+     */
+    private $s3Client;
+
+    public function initializeObject() {
+        $this->s3Client = new S3Client($this->s3DefaultProfile);
+    }
 
     /**
      * Checks the connection
@@ -41,12 +59,11 @@ class S3CommandController extends CommandController
     public function connectCommand(string $bucket = null, string $prefix = ''): void
     {
         try {
-            $s3Client = new S3Client($this->s3DefaultProfile);
             if ($bucket !== null) {
-                $s3Client->registerStreamWrapper();
+                $this->s3Client->registerStreamWrapper();
 
                 $this->outputLine('Access list of objects in bucket "%s" with key prefix "%s" ...', [$bucket, $prefix]);
-                $s3Client->getPaginator('ListObjects', ['Bucket' => $bucket, 'Prefix' => $prefix]);
+                $this->s3Client->getPaginator('ListObjects', ['Bucket' => $bucket, 'Prefix' => $prefix]);
 
                 $options = [
                     'Bucket' => $bucket,
@@ -56,16 +73,17 @@ class S3CommandController extends CommandController
                     'Key' => $prefix . 'Flownative.Aws.S3.ConnectionTest.txt'
                 ];
                 $this->outputLine('Writing test object into bucket (arn:aws:s3:::%s/%s) ...', [$bucket, $options['Key']]);
-                $s3Client->putObject($options);
+                $this->s3Client->putObject($options);
 
                 $this->outputLine('Deleting test object from bucket ...');
                 $options = [
                     'Bucket' => $bucket,
                     'Key' => $prefix . 'Flownative.Aws.S3.ConnectionTest.txt'
                 ];
-                $s3Client->deleteObject($options);
+                $this->s3Client->deleteObject($options);
             } else {
-                $s3Client->listBuckets();
+                $this->outputLine('Listing buckets ...');
+                $this->s3Client->listBuckets();
             }
         } catch (\Exception $e) {
             $this->outputLine('<b>' . $e->getMessage() . '</b>');
@@ -74,6 +92,7 @@ class S3CommandController extends CommandController
             }
             $this->quit(1);
         }
+        $this->outputLine();
         $this->outputLine('OK');
     }
 
@@ -88,8 +107,7 @@ class S3CommandController extends CommandController
     public function listBucketsCommand(): void
     {
         try {
-            $s3Client = new S3Client($this->s3DefaultProfile);
-            $result = $s3Client->listBuckets();
+            $result = $this->s3Client->listBuckets();
         } catch (\Exception $e) {
             $this->outputLine($e->getMessage());
             $this->quit(1);
@@ -121,8 +139,7 @@ class S3CommandController extends CommandController
     public function flushBucketCommand(string $bucket): void
     {
         try {
-            $s3Client = new S3Client($this->s3DefaultProfile);
-            $batchDelete = BatchDelete::fromListObjects($s3Client, ['Bucket' => $bucket]);
+            $batchDelete = BatchDelete::fromListObjects($this->s3Client, ['Bucket' => $bucket]);
             $promise = $batchDelete->promise();
         } catch (\Exception $e) {
             $this->outputLine($e->getMessage());
@@ -157,8 +174,7 @@ class S3CommandController extends CommandController
         }
 
         try {
-            $s3Client = new S3Client($this->s3DefaultProfile);
-            $s3Client->putObject([
+            $this->s3Client->putObject([
                 'Key' => $key,
                 'Bucket' => $bucket,
                 'Body' => fopen('file://' . realpath($file), 'rb')
@@ -169,5 +185,49 @@ class S3CommandController extends CommandController
         }
 
         $this->outputLine('Successfully uploaded %s to %s::%s.', [$file, $bucket, $key]);
+    }
+
+    /**
+     * Republish a collection
+     *
+     * This command forces publishing resources of the given collection by copying resources from the respective storage
+     * to target bucket.
+     *
+     * @param string $collection Name of the collection to publish
+     */
+    public function republishCommand(string $collection = 'persistent'): void
+    {
+        $collectionName = $collection;
+        $collection = $this->resourceManager->getCollection($collectionName);
+        if (!$collection) {
+            $this->outputLine('<error>The collection %s does not exist.</error>', [$collectionName]);
+            exit(1);
+        }
+
+        $target = $collection->getTarget();
+        if (!$target instanceof S3Target) {
+            $this->outputLine('<error>The target defined in collection %s is not an S3 target.</error>', [$collectionName]);
+            exit(1);
+        }
+
+        $this->outputLine('Republishing collection ...');
+        $this->output->progressStart();
+        try {
+            foreach ($collection->getObjects() as $object) {
+                /** @var StorageObject $object */
+                $resource = $this->resourceManager->getResourceBySha1($object->getSha1());
+                if ($resource) {
+                    $target->publishResource($resource, $collection);
+                }
+                $this->output->progressAdvance();
+            }
+        } catch (\Exception $e) {
+            $this->outputLine('<error>Publishing failed</error>');
+            $this->outputLine($e->getMessage());
+            $this->outputLine(get_class($e));
+            exit(2);
+        }
+        $this->output->progressFinish();
+        $this->outputLine();
     }
 }

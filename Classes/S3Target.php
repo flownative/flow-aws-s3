@@ -9,6 +9,7 @@ namespace Flownative\Aws\S3;
 
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
+use GuzzleHttp\Psr7\Uri;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Log\Utility\LogEnvironment;
 use Neos\Flow\ResourceManagement\CollectionInterface;
@@ -17,6 +18,7 @@ use Neos\Flow\ResourceManagement\PersistentResource;
 use Neos\Flow\ResourceManagement\Publishing\MessageCollector;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Flow\ResourceManagement\ResourceMetaDataInterface;
+use Neos\Flow\ResourceManagement\Storage\StorageInterface;
 use Neos\Flow\ResourceManagement\Storage\StorageObject;
 use Neos\Flow\ResourceManagement\Target\TargetInterface;
 use Psr\Log\LoggerInterface;
@@ -63,6 +65,11 @@ class S3Target implements TargetInterface
     protected $keyPrefix;
 
     /**
+     * @var string
+     */
+    protected $persistentResourceUriPattern = '';
+
+    /**
      * CORS (Cross-Origin Resource Sharing) allowed origins for published content
      *
      * @var string
@@ -85,7 +92,7 @@ class S3Target implements TargetInterface
     /**
      * Internal cache for known storages, indexed by storage name
      *
-     * @var array<\Neos\Flow\ResourceManagement\Storage\StorageInterface>
+     * @var array<StorageInterface>
      */
     protected $storages = [];
 
@@ -124,6 +131,11 @@ class S3Target implements TargetInterface
     protected $existingObjectsInfo = [];
 
     /**
+     * @var bool
+     */
+    protected $bucketIsPublic;
+
+    /**
      * Constructor
      *
      * @param string $name Name of this target instance, according to the resource settings
@@ -152,6 +164,22 @@ class S3Target implements TargetInterface
                     break;
                 case 'acl':
                     $this->acl = (string)$value;
+                    break;
+                case 'persistentResourceUris':
+                    if (!is_array($value)) {
+                        throw new Exception(sprintf('The option "%s" which was specified in the configuration of the "%s" resource S3Target is not a valid array. Please check your settings.', $key, $name), 1628259768);
+                    }
+                    foreach ($value as $uriOptionKey => $uriOptionValue) {
+                        switch ($uriOptionKey) {
+                            case 'pattern':
+                                $this->persistentResourceUriPattern = (string)$uriOptionValue;
+                            break;
+                            default:
+                                if ($uriOptionValue !== null) {
+                                    throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource S3Target. Please check your settings.', $uriOptionKey, $name), 1628259794);
+                                }
+                        }
+                    }
                 break;
                 default:
                     if ($value !== null) {
@@ -216,6 +244,14 @@ class S3Target implements TargetInterface
      */
     public function publishCollection(CollectionInterface $collection, callable $callback = null)
     {
+        $storage = $collection->getStorage();
+
+        if ($storage instanceof S3Storage && $storage->getBucketName() === $this->bucketName) {
+            // TODO do we need to update the content-type on the objects?
+            $this->systemLogger->debug(sprintf('Skipping resource publishing for bucket "%s", storage and target are the same.', $this->bucketName), LogEnvironment::fromMethodName(__METHOD__));
+            return;
+        }
+
         if (!isset($this->existingObjectsInfo)) {
             $this->existingObjectsInfo = [];
             $requestArguments = [
@@ -238,12 +274,9 @@ class S3Target implements TargetInterface
 
         $potentiallyObsoleteObjects = array_fill_keys($this->existingObjectsInfo, true);
 
-        $storage = $collection->getStorage();
         if ($storage instanceof S3Storage) {
-            $storageBucketName = $storage->getBucketName();
-            if ($storageBucketName === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
-                throw new Exception(sprintf('Could not publish collection %s because the source and target S3 bucket is the same, with identical key prefixes. Either choose a different bucket or at least key prefix for the target.', $collection->getName()), 1428929137);
-            }
+            $this->publishCollectionFromS3Storage($collection, $storage, $potentiallyObsoleteObjects, $callback);
+        } else {
             foreach ($collection->getObjects($callback) as $object) {
                 /** @var StorageObject $object */
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
@@ -298,6 +331,34 @@ class S3Target implements TargetInterface
     }
 
     /**
+     * @param CollectionInterface $collection
+     * @param S3Storage $storage
+     * @param array $potentiallyObsoleteObjects
+     * @param callable|null $callback
+     */
+    private function publishCollectionFromS3Storage(CollectionInterface $collection, S3Storage $storage, array &$potentiallyObsoleteObjects, callable $callback = null): void
+    {
+        foreach ($collection->getObjects($callback) as $object) {
+            /** @var StorageObject $object */
+            $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
+            if (array_key_exists($objectName, $potentiallyObsoleteObjects)) {
+                $this->systemLogger->debug(sprintf('The resource object "%s" (SHA1: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getSha1() ?: 'unknown', $this->bucketName));
+                $potentiallyObsoleteObjects[$objectName] = false;
+            } else {
+                $this->copyObject(
+                    function (StorageObject $object) use ($storage): string {
+                        return $this->bucketName . '/' . $storage->getKeyPrefix() . $object->getSha1();
+                    },
+                    function (StorageObject $object) use ($storage): string {
+                        return $storage->getKeyPrefix() . $this->getRelativePublicationPathAndFilename($object);
+                    },
+                    $object
+                );
+            }
+        }
+    }
+
+    /**
      * Returns the web accessible URI pointing to the given static resource
      *
      * @param string $relativePathAndFilename Relative path and filename of the static resource
@@ -326,30 +387,29 @@ class S3Target implements TargetInterface
     {
         $storage = $collection->getStorage();
         if ($storage instanceof S3Storage) {
-            if ($storage->getBucketName() === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
-                throw new Exception(sprintf('Could not publish resource with SHA1 hash %s of collection %s because the source and target S3 bucket is the same, with identical key prefixes. Either choose a different bucket or at least key prefix for the target.', $resource->getSha1(), $collection->getName()), 1428929563);
+            if ($storage->getBucketName() === $this->bucketName) {
+                // to update the Content-Type the object must be copied to itself…
+                $this->copyObject(
+                    function (PersistentResource $resource) use ($storage): string {
+                        return $this->bucketName . '/' . $storage->getKeyPrefix() . $resource->getSha1();
+                    },
+                    function (PersistentResource $resource) use ($storage): string {
+                        return $storage->getKeyPrefix() . $resource->getSha1();
+                    },
+                    $resource
+                );
+                return;
             }
 
-            $sourceObjectArn = $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
-            $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
-            try {
-                $options = [
-                    'Bucket' => $this->bucketName,
-                    'CopySource' => urlencode($sourceObjectArn),
-                    'ContentType' => $resource->getMediaType(),
-                    'MetadataDirective' => 'REPLACE',
-                    'Key' => $objectName
-                ];
-                if ($this->getAcl()) {
-                    $options['ACL'] = $this->getAcl();
-                }
-                $this->s3Client->copyObject($options);
-                $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from bucket "%s" to bucket "%s"', $objectName, $resource->getSha1() ?: 'unknown', $storage->getBucketName(), $this->bucketName));
-            } catch (S3Exception $e) {
-                $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $sourceObjectArn, $e->getMessage());
-                $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
-                $this->messageCollector->append($message);
-            }
+            $this->copyObject(
+                function (PersistentResource $resource) use ($storage): string {
+                    return urlencode($storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1());
+                },
+                function (PersistentResource $resource): string {
+                    return $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
+                },
+                $resource
+            );
         } else {
             $sourceStream = $resource->getStream();
             if ($sourceStream === false) {
@@ -358,6 +418,31 @@ class S3Target implements TargetInterface
                 return;
             }
             $this->publishFile($sourceStream, $this->getRelativePublicationPathAndFilename($resource), $resource);
+        }
+    }
+
+    private function copyObject(\Closure $sourceBuilder, \Closure $targetBuilder, ResourceMetaDataInterface $resource): void
+    {
+        $source = $sourceBuilder($resource);
+        $target = $targetBuilder($resource);
+
+        $options = [
+            'Bucket' => $this->bucketName,
+            'CopySource' => $source,
+            'ContentType' => $resource->getMediaType(),
+            'MetadataDirective' => 'REPLACE',
+            'Key' => $target
+        ];
+        if ($this->getAcl()) {
+            $options['ACL'] = $this->getAcl();
+        }
+        try {
+            $this->s3Client->copyObject($options);
+            $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from "%s" to bucket "%s"', $target, $resource->getSha1() ?: 'unknown', $source, $this->bucketName));
+        } catch (S3Exception $e) {
+            $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
+            $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $source, $e->getMessage());
+            $this->messageCollector->append($message);
         }
     }
 
@@ -371,6 +456,13 @@ class S3Target implements TargetInterface
     {
         if ($this->unpublishResources === false) {
             $this->systemLogger->debug(sprintf('Skipping resource unpublishing %s from bucket "%s", because configuration option "unpublishResources" is FALSE.', $resource->getSha1() ?: 'unknown', $this->bucketName));
+            return;
+        }
+
+        $storage = $this->resourceManager->getCollection($resource->getCollectionName())->getStorage();
+        if ($storage instanceof S3Storage && $storage->getBucketName() === $this->bucketName) {
+            // Unpublish for same-bucket setups is a NOOP, because the storage object will already be deleted.
+            $this->systemLogger->debug(sprintf('Skipping resource unpublishing %s from bucket "%s", because storage and target are the same.', $resource->getSha1() ?: 'unknown', $this->bucketName));
             return;
         }
 
@@ -393,11 +485,31 @@ class S3Target implements TargetInterface
      */
     public function getPublicPersistentResourceUri(PersistentResource $resource): string
     {
-        if ($this->baseUri !== '') {
+
+        if (empty($this->persistentResourceUriPattern)) {
+            if (empty($this->baseUri)) {
+                return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
+            }
+
             return $this->baseUri . $this->encodeRelativePathAndFilenameForUri($this->getRelativePublicationPathAndFilename($resource));
         }
 
-        return $this->s3Client->getObjectUrl($this->bucketName, $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource));
+        $variables = [
+            '{baseUri}' => $this->baseUri,
+            '{bucketName}' => $this->bucketName,
+            '{keyPrefix}' => $this->keyPrefix,
+            '{sha1}' => $resource->getSha1(),
+            '{filename}' => $resource->getFilename(),
+            '{fileExtension}' => $resource->getFileExtension()
+        ];
+
+        $customUri = $this->persistentResourceUriPattern;
+        foreach ($variables as $placeholder => $replacement) {
+            $customUri = str_replace($placeholder, $replacement, $customUri);
+        }
+
+        // Let Uri implementation take care of encoding the Uri
+        return (string)new Uri($customUri);
     }
 
     /**
