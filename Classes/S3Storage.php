@@ -204,7 +204,7 @@ class S3Storage implements WritableStorageInterface
      * @param string $content The actual content to import
      * @param string $collectionName Name of the collection the new Resource belongs to
      * @return PersistentResource A resource object representing the imported resource
-     * @return PersistentResource A resource object representing the imported resource
+     * @throws \Exception
      * @api
      */
     public function importResourceFromContent($content, $collectionName): PersistentResource
@@ -342,44 +342,47 @@ class S3Storage implements WritableStorageInterface
     /**
      * Retrieve all Objects stored in this storage.
      *
-     * @return array<\Neos\Flow\ResourceManagement\Storage\StorageObject>
-     * @api
+     * @param callable|null $callback Function called after each iteration
+     * @return \Generator<StorageObject>
      */
-    public function getObjects(): array
+    public function getObjects(callable $callback = null)
     {
-        $objects = [];
         foreach ($this->resourceManager->getCollectionsByStorage($this) as $collection) {
-            $objects[] = $this->getObjectsByCollection($collection);
+            yield from $this->getObjectsByCollection($collection, $callback);
         }
-
-        // the empty array covers cases when no loops were made
-        return array_merge([], ...$objects);
     }
 
     /**
      * Retrieve all Objects stored in this storage, filtered by the given collection name
      *
      * @param CollectionInterface $collection
-     * @return array<\Neos\Flow\ResourceManagement\Storage\StorageObject>
+     * @param callable|null $callback Function called after each iteration
+     * @return \Generator<StorageObject>
      * @api
      */
-    public function getObjectsByCollection(CollectionInterface $collection): array
+    public function getObjectsByCollection(CollectionInterface $collection, callable $callback = null)
     {
-        $objects = [];
-        $bucketName = $this->bucketName;
-
-        foreach ($this->resourceRepository->findByCollectionName($collection->getName()) as $resource) {
+        $iteration = 0;
+        $iterator = $this->resourceRepository->findByCollectionNameIterator($collection->getName());
+        foreach ($this->resourceRepository->iterate($iterator, $callback) as $resource) {
             /** @var PersistentResource $resource */
             $object = new StorageObject();
             $object->setFilename($resource->getFilename());
             $object->setSha1($resource->getSha1());
-            $object->setStream(function () use ($bucketName, $resource) {
-                return fopen('s3://' . $bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'rb');
+            $object->setFileSize($resource->getFileSize());
+            $object->setStream(function () use ($resource) {
+                return $this->getStreamByResource($resource);
             });
-            $objects[] = $object;
+            yield $object;
+            if ($callback !== null) {
+                $callback($iteration, $object);
+            }
+            $iteration++;
         }
-
-        return $objects;
+        if ($iteration === 0) {
+            // if the collection is empty, return an empty generator
+            yield from [];
+        }
     }
 
     /**
