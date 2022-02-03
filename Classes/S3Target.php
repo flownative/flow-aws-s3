@@ -277,7 +277,7 @@ class S3Target implements TargetInterface
         if ($storage instanceof S3Storage) {
             $this->publishCollectionFromS3Storage($collection, $storage, $potentiallyObsoleteObjects, $callback);
         } else {
-            foreach ($collection->getObjects() as $object) {
+            foreach ($collection->getObjects($callback) as $object) {
                 /** @var StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
