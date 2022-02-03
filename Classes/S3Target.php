@@ -229,7 +229,7 @@ class S3Target implements TargetInterface
      */
     public function getAcl()
     {
-        return isset($this->acl) ? $this->acl : $this->defaultAcl;
+        return $this->acl ?? $this->defaultAcl;
     }
 
     /**
@@ -514,7 +514,7 @@ class S3Target implements TargetInterface
         ];
 
         try {
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->getAcl() ? $this->getAcl() : null, $options);
+            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->getAcl() ?: null, $options);
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown'));
         } catch (\Exception $e) {
             $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with SHA1 hash "%s": %s', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown', $e->getMessage()));
