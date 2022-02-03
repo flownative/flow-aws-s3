@@ -277,34 +277,6 @@ class S3Target implements TargetInterface
         if ($storage instanceof S3Storage) {
             $this->publishCollectionFromS3Storage($collection, $storage, $potentiallyObsoleteObjects, $callback);
         } else {
-            foreach ($collection->getObjects($callback) as $object) {
-                /** @var StorageObject $object */
-                $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
-                if (array_key_exists($objectName, $potentiallyObsoleteObjects)) {
-                    $this->systemLogger->debug(sprintf('The resource object "%s" (SHA1: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getSha1() ?: 'unknown', $this->bucketName));
-                    $potentiallyObsoleteObjects[$objectName] = false;
-                } else {
-                    $options = [
-                        'Bucket' => $this->bucketName,
-                        'CopySource' => urlencode($storageBucketName . '/' . $storage->getKeyPrefix() . $object->getSha1()),
-                        'ContentType' => $object->getMediaType(),
-                        'MetadataDirective' => 'REPLACE',
-                        'Key' => $objectName
-                    ];
-                    if ($this->getAcl()) {
-                        $options['ACL'] = $this->getAcl();
-                    }
-                    try {
-                        $this->s3Client->copyObject($options);
-                        $this->systemLogger->debug(sprintf('Successfully copied resource as object "%s" (SHA1: %s) from bucket "%s" to bucket "%s"', $objectName, $object->getSha1() ?: 'unknown', $storageBucketName, $this->bucketName));
-                    } catch (S3Exception $e) {
-                        $message = sprintf('Could not copy resource with SHA1 hash %s of collection %s from bucket %s to %s: %s', $object->getSha1(), $collection->getName(), $storageBucketName, $this->bucketName, $e->getMessage());
-                        $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
-                        $this->messageCollector->append($message);
-                    }
-                }
-            }
-        } else {
             foreach ($collection->getObjects() as $object) {
                 /** @var StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
