@@ -14,8 +14,8 @@
         "MIT"
     ],
     "require": {
-        "neos/flow": "^7.0 || dev-master",
-        "aws/aws-sdk-php": "~3.0"
+        "neos/flow": "^6.3 || ^7.0 || dev-master",
+        "aws/aws-sdk-php": "^3.0"
     },
     "autoload": {
         "psr-4": {
