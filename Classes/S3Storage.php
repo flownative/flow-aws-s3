@@ -303,7 +303,7 @@ class S3Storage implements WritableStorageInterface
      * @return bool|resource A URI (for example the full path and filename) leading to the resource file or FALSE if it does not exist
      * @api
      */
-    public function getStreamByResource(PersistentResource $resource): bool
+    public function getStreamByResource(PersistentResource $resource)
     {
         try {
             return fopen('s3://' . $this->bucketName . '/' . $this->keyPrefix . $resource->getSha1(), 'rb');
