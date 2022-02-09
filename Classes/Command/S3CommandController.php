@@ -111,7 +111,6 @@ class S3CommandController extends CommandController
         } catch (\Exception $e) {
             $this->outputLine($e->getMessage());
             $this->quit(1);
-            exit;
         }
 
         if (count($result['Buckets']) === 0) {
@@ -144,7 +143,6 @@ class S3CommandController extends CommandController
         } catch (\Exception $e) {
             $this->outputLine($e->getMessage());
             $this->quit(1);
-            exit;
         }
         $promise->wait();
         $this->outputLine('Successfully flushed bucket %s.', [$bucket]);

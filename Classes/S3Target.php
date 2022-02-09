@@ -229,7 +229,7 @@ class S3Target implements TargetInterface
      */
     public function getAcl()
     {
-        return isset($this->acl) ? $this->acl : $this->defaultAcl;
+        return $this->acl ?? $this->defaultAcl;
     }
 
     /**
@@ -277,7 +277,7 @@ class S3Target implements TargetInterface
         if ($storage instanceof S3Storage) {
             $this->publishCollectionFromS3Storage($collection, $storage, $potentiallyObsoleteObjects, $callback);
         } else {
-            foreach ($collection->getObjects() as $object) {
+            foreach ($collection->getObjects($callback) as $object) {
                 /** @var StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
@@ -413,7 +413,7 @@ class S3Target implements TargetInterface
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from "%s" to bucket "%s"', $target, $resource->getSha1() ?: 'unknown', $source, $this->bucketName));
         } catch (S3Exception $e) {
             $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
-            $message = sprintf('Could not publish resource with SHA1 hash %s of collection %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $collection->getName(), $source, $e->getMessage());
+            $message = sprintf('Could not publish resource with SHA1 hash %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $source, $e->getMessage());
             $this->messageCollector->append($message);
         }
     }
@@ -514,7 +514,7 @@ class S3Target implements TargetInterface
         ];
 
         try {
-            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->getAcl() ? $this->getAcl() : null, $options);
+            $this->s3Client->upload($this->bucketName, $objectName, $sourceStream, $this->getAcl() ?: null, $options);
             $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" in bucket "%s" with SHA1 hash "%s"', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown'));
         } catch (\Exception $e) {
             $this->systemLogger->debug(sprintf('Failed publishing resource as object "%s" in bucket "%s" with SHA1 hash "%s": %s', $objectName, $this->bucketName, $metaData->getSha1() ?: 'unknown', $e->getMessage()));
