@@ -402,11 +402,24 @@ class S3Storage implements WritableStorageInterface
         $resource->setCollectionName($collectionName);
         $resource->setSha1($sha1Hash);
 
-        // Workaround for https://github.com/flownative/flow-aws-s3/issues/56; Also remove .tmp ending because it will also result in wrong mime type
-        $newName = str_replace('.tmp', '', $temporaryPathAndFilename);
-        rename($temporaryPathAndFilename, $newName);
-        $temporaryPathAndFilename = $newName;
-        $resource->setMediaType(mime_content_type($temporaryPathAndFilename));
+        /**
+         * Workaround for https://github.com/flownative/flow-aws-s3/issues/56
+         *
+         * This is used when copying resource to Minio with ./flow resource:copy
+         *
+         * 1. Use mime type stored in db
+         * 2. use mime_content_type() for detection
+         */
+        $resourceInDb = $this->resourceManager->getResourceBySha1($sha1Hash);
+        if ($resourceInDb instanceof PersistentResource) {
+            $resource->setMediaType($resourceInDb->getMediaType());
+        } else {
+            // Also remove .tmp ending because it will also result in wrong mime type
+            $newName = str_replace('.tmp', '', $temporaryPathAndFilename);
+            rename($temporaryPathAndFilename, $newName);
+            $temporaryPathAndFilename = $newName;
+            $resource->setMediaType(mime_content_type($temporaryPathAndFilename));
+        }
 
         try {
             $this->s3Client->headObject([
