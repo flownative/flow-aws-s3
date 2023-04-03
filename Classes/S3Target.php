@@ -128,7 +128,7 @@ class S3Target implements TargetInterface
     /**
      * @var array
      */
-    protected $existingObjectsInfo = [];
+    protected $existingObjectsInfo;
 
     /**
      * @var bool
@@ -319,7 +319,7 @@ class S3Target implements TargetInterface
             } else {
                 $this->copyObject(
                     function (StorageObject $object) use ($storage): string {
-                        return $this->bucketName . '/' . $storage->getKeyPrefix() . $object->getSha1();
+                        return $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $object->getSha1();
                     },
                     function (StorageObject $object) use ($storage): string {
                         return $storage->getKeyPrefix() . $this->getRelativePublicationPathAndFilename($object);
