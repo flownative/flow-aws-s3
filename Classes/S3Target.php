@@ -246,7 +246,7 @@ class S3Target implements TargetInterface
     {
         $storage = $collection->getStorage();
 
-        if ($storage instanceof S3Storage && $storage->getBucketName() === $this->bucketName) {
+        if ($storage instanceof S3Storage && $storage->getBucketName() === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
             // TODO do we need to update the content-type on the objects?
             $this->systemLogger->debug(sprintf('Skipping resource publishing for bucket "%s", storage and target are the same.', $this->bucketName), LogEnvironment::fromMethodName(__METHOD__));
             return;
@@ -359,7 +359,7 @@ class S3Target implements TargetInterface
     {
         $storage = $collection->getStorage();
         if ($storage instanceof S3Storage) {
-            if ($storage->getBucketName() === $this->bucketName) {
+            if ($storage->getBucketName() === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
                 // to update the Content-Type the object must be copied to itself…
                 $this->copyObject(
                     function (PersistentResource $resource) use ($storage): string {
@@ -410,7 +410,7 @@ class S3Target implements TargetInterface
         }
         try {
             $this->s3Client->copyObject($options);
-            $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from "%s" to bucket "%s"', $target, $resource->getSha1() ?: 'unknown', $source, $this->bucketName));
+            $this->systemLogger->debug(sprintf('Successfully published resource as object "%s" (SHA1: %s) by copying from "%s" to bucket "%s"', $target, $resource->getSha1() ?: 'unknown', $source, $this->bucketName), $options);
         } catch (S3Exception $e) {
             $this->systemLogger->critical($e, LogEnvironment::fromMethodName(__METHOD__));
             $message = sprintf('Could not publish resource with SHA1 hash %s (source object: %s) through "CopyObject" because the S3 client reported an error: %s', $resource->getSha1(), $source, $e->getMessage());
@@ -432,7 +432,7 @@ class S3Target implements TargetInterface
         }
 
         $storage = $this->resourceManager->getCollection($resource->getCollectionName())->getStorage();
-        if ($storage instanceof S3Storage && $storage->getBucketName() === $this->bucketName) {
+        if ($storage instanceof S3Storage && $storage->getBucketName() === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
             // Unpublish for same-bucket setups is a NOOP, because the storage object will already be deleted.
             $this->systemLogger->debug(sprintf('Skipping resource unpublishing %s from bucket "%s", because storage and target are the same.', $resource->getSha1() ?: 'unknown', $this->bucketName));
             return;
