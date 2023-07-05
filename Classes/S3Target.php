@@ -128,7 +128,7 @@ class S3Target implements TargetInterface
     /**
      * @var array
      */
-    protected $existingObjectsInfo;
+    protected $existingObjectsInfo = [];
 
     /**
      * @var bool
@@ -252,8 +252,7 @@ class S3Target implements TargetInterface
             return;
         }
 
-        if (!isset($this->existingObjectsInfo)) {
-            $this->existingObjectsInfo = [];
+        if ($this->existingObjectsInfo === []) {
             $requestArguments = [
                 'Bucket' => $this->bucketName,
                 'Prefix' => $this->keyPrefix
