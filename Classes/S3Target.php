@@ -536,6 +536,9 @@ class S3Target implements TargetInterface
     {
         if ($object->getRelativePublicationPath() !== '') {
             $pathAndFilename = $object->getRelativePublicationPath() . $object->getFilename();
+        } elseif (isset($this->s3DefaultProfile['minio']) && $this->s3DefaultProfile['minio']) {
+            // If MinIO is used we have to change to url style. Creating an object beneath an object is not supported
+            $pathAndFilename = $object->getSha1() . '_folder/' . $object->getFilename();
         } else {
             $pathAndFilename = $object->getSha1() . '/' . $object->getFilename();
         }
