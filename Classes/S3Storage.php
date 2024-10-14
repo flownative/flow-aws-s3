@@ -428,6 +428,8 @@ class S3Storage implements WritableStorageInterface
             $this->systemLogger->info(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName), LogEnvironment::fromMethodName(__METHOD__));
         }
 
+        unlink($temporaryPathAndFilename);
+
         return $resource;
     }
 }
