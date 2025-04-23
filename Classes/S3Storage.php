@@ -394,6 +394,11 @@ class S3Storage implements WritableStorageInterface
      */
     protected function importTemporaryFile(string $temporaryPathAndFilename, string $collectionName): PersistentResource
     {
+
+        if (!is_file($temporaryPathAndFilename) || !is_readable($temporaryPathAndFilename)) {
+            throw new Exception(sprintf('Unable to read temporary file "%s"', $temporaryPathAndFilename), 1728923540);
+        }
+
         $sha1Hash = sha1_file($temporaryPathAndFilename);
         $objectName = $this->keyPrefix . $sha1Hash;
 
@@ -427,6 +432,8 @@ class S3Storage implements WritableStorageInterface
         } else {
             $this->systemLogger->info(sprintf('Did not import resource as object "%s" into bucket "%s" because that object already existed.', $objectName, $this->bucketName), LogEnvironment::fromMethodName(__METHOD__));
         }
+
+        unlink($temporaryPathAndFilename);
 
         return $resource;
     }
