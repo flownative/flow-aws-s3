@@ -374,7 +374,7 @@ class S3Target implements TargetInterface
 
             $this->copyObject(
                 function (PersistentResource $resource) use ($storage): string {
-                    return urlencode($storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1());
+                    return $storage->getBucketName() . '/' . $storage->getKeyPrefix() . $resource->getSha1();
                 },
                 function (PersistentResource $resource): string {
                     return $this->keyPrefix . $this->getRelativePublicationPathAndFilename($resource);
