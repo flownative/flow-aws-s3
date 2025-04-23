@@ -12,6 +12,7 @@ use Aws\S3\S3Client;
 use Flownative\Aws\S3\S3Target;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Cli\CommandController;
+use Neos\Flow\ResourceManagement\PersistentResource;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Flow\ResourceManagement\Storage\StorageObject;
 
@@ -39,7 +40,8 @@ class S3CommandController extends CommandController
      */
     private $s3Client;
 
-    public function initializeObject() {
+    public function initializeObject()
+    {
         $this->s3Client = new S3Client($this->s3DefaultProfile);
     }
 
@@ -227,5 +229,51 @@ class S3CommandController extends CommandController
         }
         $this->output->progressFinish();
         $this->outputLine();
+    }
+
+    /**
+     * @param string $s3Object
+     * @param string $keyPrefix
+     * @param bool $removeUnregistered Remove objetcs from storage, that are not
+     * @param bool $debug
+     * @return void
+     */
+    public function diffS3ToLocalResourcesCommand(string $bucket, string $keyPrefix = '', bool $removeUnregistered = false, bool $debug = false)
+    {
+        $localMissingResources = 0;
+
+        $objects = $this->s3Client->getIterator('ListObjects', [
+            "Bucket" => $bucket,
+            "Prefix" => $keyPrefix,
+        ]);
+
+        foreach ($objects as $s3Object) {
+            $persistentObjectIdentifier = substr($s3Object['Key'], strlen($keyPrefix) + 1);
+            $resource = $this->resourceManager->getResourceBySha1($persistentObjectIdentifier);
+            $this->output->progressAdvance();
+
+            if (!$resource instanceof PersistentResource) {
+                $debug && $this->outputFormatted(sprintf('<error>S3 object with identifier <b>%s</b> (%s) is missing in the resource management<error>', $persistentObjectIdentifier, $s3Object['Key']));
+
+                if ($removeUnregistered) {
+                    $result = $this->s3Client->deleteObject([
+                        'Bucket' => $bucket,
+                        'Key' => $s3Object['Key']
+                    ]);
+
+                    if ($result['@metadata']['statusCode'] >= 200 && $result['@metadata']['statusCode'] <= 300) {
+                        $this->outputLine(sprintf('<success>Successfully deleted object with key "%s"', $s3Object['Key']));
+                    } else {
+                        $this->outputLine(sprintf('<error>Error while deleting object with key "%s". Details: "%s"', $s3Object['Key'], json_encode($result)));
+                    }
+                }
+
+                $localMissingResources++;
+            }
+        }
+
+        $this->output->progressFinish();
+        $this->outputLine();
+        $this->outputLine(sprintf('%s resources are missing in the resource management.', $localMissingResources));
     }
 }
