@@ -131,6 +131,11 @@ class S3Target implements TargetInterface
     protected $existingObjectsInfo = [];
 
     /**
+     * @var \Closure
+     */
+    protected $onPublishCallback;
+
+    /**
      * @var bool
      */
     protected $bucketIsPublic;
@@ -390,6 +395,13 @@ class S3Target implements TargetInterface
             }
             $this->publishFile($sourceStream, $this->getRelativePublicationPathAndFilename($resource), $resource);
         }
+        try {
+            $this->onPublishCallback->call($this);
+        } catch (\Exception $e) {
+            // TODO: Properly handle Exception;
+            $this->systemLogger->debug(sprintf('Failed to invoke onPublish Callback, %s: %s', '1753783098', $e->getMessage()));
+            throw $e;
+        }
     }
 
     private function copyObject(\Closure $sourceBuilder, \Closure $targetBuilder, ResourceMetaDataInterface $resource): void
@@ -542,10 +554,10 @@ class S3Target implements TargetInterface
         return $pathAndFilename;
     }
 
-    public function onPublish (\Closuer $callback): void
+    public function onPublish (\Closure $callback): void
     {
         // TODO: Implement onPublish() method
-
+        $this->onPublishCallback = $callback;
         return;
     }
 }
