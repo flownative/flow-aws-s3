@@ -541,4 +541,11 @@ class S3Target implements TargetInterface
         }
         return $pathAndFilename;
     }
+
+    public function onPublish (\Closuer $callback): void
+    {
+        // TODO: Implement onPublish() method
+
+        return;
+    }
 }
