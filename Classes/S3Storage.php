@@ -363,9 +363,8 @@ class S3Storage implements WritableStorageInterface
     public function getObjectsByCollection(CollectionInterface $collection, callable $callback = null)
     {
         $iteration = 0;
-        $iterator = $this->resourceRepository->findByCollectionNameIterator($collection->getName());
-        foreach ($this->resourceRepository->iterate($iterator, $callback) as $resource) {
-            /** @var PersistentResource $resource */
+        $resources = $this->resourceRepository->findByCollectionNameIterator($collection->getName());
+        foreach ($resources as $resource) {
             $object = new StorageObject();
             $object->setFilename($resource->getFilename());
             $object->setSha1($resource->getSha1());
