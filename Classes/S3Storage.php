@@ -345,7 +345,7 @@ class S3Storage implements WritableStorageInterface
      * @param callable|null $callback Function called after each iteration
      * @return \Generator<StorageObject>
      */
-    public function getObjects(callable $callback = null)
+    public function getObjects(?callable $callback = null)
     {
         foreach ($this->resourceManager->getCollectionsByStorage($this) as $collection) {
             yield from $this->getObjectsByCollection($collection, $callback);
@@ -360,7 +360,7 @@ class S3Storage implements WritableStorageInterface
      * @return \Generator<StorageObject>
      * @api
      */
-    public function getObjectsByCollection(CollectionInterface $collection, callable $callback = null)
+    public function getObjectsByCollection(CollectionInterface $collection, ?callable $callback = null)
     {
         $iteration = 0;
         $iterator = $this->resourceRepository->findByCollectionNameIterator($collection->getName());

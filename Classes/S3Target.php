@@ -247,7 +247,7 @@ class S3Target implements TargetInterface
      * @throws \Neos\Flow\Exception
      * @throws \Exception
      */
-    public function publishCollection(CollectionInterface $collection, callable $callback = null)
+    public function publishCollection(CollectionInterface $collection, ?callable $callback = null)
     {
         $storage = $collection->getStorage();
 
@@ -312,7 +312,7 @@ class S3Target implements TargetInterface
      * @param array $potentiallyObsoleteObjects
      * @param callable|null $callback
      */
-    private function publishCollectionFromS3Storage(CollectionInterface $collection, S3Storage $storage, array &$potentiallyObsoleteObjects, callable $callback = null): void
+    private function publishCollectionFromS3Storage(CollectionInterface $collection, S3Storage $storage, array &$potentiallyObsoleteObjects, ?callable $callback = null): void
     {
         foreach ($collection->getObjects($callback) as $object) {
             /** @var StorageObject $object */
