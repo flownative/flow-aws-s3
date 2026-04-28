@@ -131,9 +131,9 @@ class S3Target implements TargetInterface
     protected $existingObjectsInfo = [];
 
     /**
-     * @var \Closure
+     * @var list<\Closure(int $iteration): void>
      */
-    protected $onPublishCallback;
+    protected $callbacks;
 
     /**
      * @var bool
@@ -154,16 +154,16 @@ class S3Target implements TargetInterface
             switch ($key) {
                 case 'bucket':
                     $this->bucketName = (string)$value;
-                break;
+                    break;
                 case 'keyPrefix':
                     $this->keyPrefix = (string)$value;
-                break;
+                    break;
                 case 'corsAllowOrigin':
                     $this->corsAllowOrigin = (string)$value;
-                break;
+                    break;
                 case 'baseUri':
                     $this->baseUri = (string)$value;
-                break;
+                    break;
                 case 'unpublishResources':
                     $this->unpublishResources = (bool)$value;
                     break;
@@ -178,14 +178,14 @@ class S3Target implements TargetInterface
                         switch ($uriOptionKey) {
                             case 'pattern':
                                 $this->persistentResourceUriPattern = (string)$uriOptionValue;
-                            break;
+                                break;
                             default:
                                 if ($uriOptionValue !== null) {
                                     throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource S3Target. Please check your settings.', $uriOptionKey, $name), 1628259794);
                                 }
                         }
                     }
-                break;
+                    break;
                 default:
                     if ($value !== null) {
                         throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource S3Target. Please check your settings.', $key, $name), 1428928226);
@@ -281,11 +281,14 @@ class S3Target implements TargetInterface
         if ($storage instanceof S3Storage) {
             $this->publishCollectionFromS3Storage($collection, $storage, $potentiallyObsoleteObjects, $callback);
         } else {
+            $iteration = 0;
             foreach ($collection->getObjects($callback) as $object) {
                 /** @var StorageObject $object */
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 $potentiallyObsoleteObjects[$objectName] = false;
+                $this->invokeOnPublishCallbacks($iteration);
+                $iteration++;
             }
         }
 
@@ -394,13 +397,6 @@ class S3Target implements TargetInterface
                 return;
             }
             $this->publishFile($sourceStream, $this->getRelativePublicationPathAndFilename($resource), $resource);
-        }
-        try {
-            $this->onPublishCallback->call($this);
-        } catch (\Exception $e) {
-            // TODO: Properly handle Exception;
-            $this->systemLogger->debug(sprintf('Failed to invoke onPublish Callback, %s: %s', '1753783098', $e->getMessage()));
-            throw $e;
         }
     }
 
@@ -556,8 +552,13 @@ class S3Target implements TargetInterface
 
     public function onPublish (\Closure $callback): void
     {
-        // TODO: Implement onPublish() method
-        $this->onPublishCallback = $callback;
-        return;
+        $this->callbacks[] = $callback;
+    }
+
+    protected function invokeOnPublishCallbacks(int $iteration): void
+    {
+        foreach ($this->callbacks as $callback) {
+            $callback($iteration);
+        }
     }
 }
