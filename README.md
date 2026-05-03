@@ -460,3 +460,32 @@ Flownative:
             secret: 'abcdefgHIJKLMNOP1234567890QRSTUVWXYZabcd'
           endpoint: 'https://storage.googleapis.com/mybucket.flownative.net'
 ```
+
+## Using MinIO
+
+[MinIO](https://min.io/) is a S3 compatible cloud storage server.
+You can also use it to store your assets.
+
+You can then use your key and secret in the settings of the S3 connector.
+Additionally you need to specify a custom endpoint which refers to your MinIO instance.   
+AWS S3 is going to prepend the bucket name to your custom endpoints hostname by default.
+Activating the `use_path_style_endpoint` option, the bucket name gets appended to the custom endpoint.
+Please do not miss the minio flag, otherwise you may encounter errors with resources stored beneath other resources.  
+ 
+```yaml
+Flownative:
+  Aws:
+    S3:
+      profiles:
+        # Default credentials and client options
+        # Override these in your settings with real values
+        default:
+          credentials:
+            key: 'QD2AD2B134LQ9SF1CAJB'
+            secret: 'ak1KJAnotasecret9JamNkwYY188872MyljWJ'
+          endpoint: 'http://your-minio.com:9000/'
+          # Prevents the aws client to prepend the bucket name to the hostname
+          # e.g. http://bucket.your-minio.com:9000/:
+          use_path_style_endpoint: true
+          minio: true
+```
