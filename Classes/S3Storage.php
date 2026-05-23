@@ -100,10 +100,10 @@ class S3Storage implements WritableStorageInterface
             switch ($key) {
                 case 'bucket':
                     $this->bucketName = $value;
-                break;
+                    break;
                 case 'keyPrefix':
                     $this->keyPrefix = $value;
-                break;
+                    break;
                 default:
                     if ($value !== null) {
                         throw new Exception(sprintf('An unknown option "%s" was specified in the configuration of the "%s" resource S3Storage. Please check your settings.', $key, $name), 1428928229);
@@ -288,11 +288,18 @@ class S3Storage implements WritableStorageInterface
      */
     public function deleteResource(PersistentResource $resource): bool
     {
-        $this->s3Client->deleteObject([
+        $result = $this->s3Client->deleteObject([
             'Bucket' => $this->bucketName,
             'Key' => $this->keyPrefix . $resource->getSha1()
         ]);
-        return true;
+
+        if ($result['@metadata']['statusCode'] >= 200 && $result['@metadata']['statusCode'] <= 300) {
+            $this->systemLogger->info(sprintf('<success>Successfully deleted object with key "%s"', $this->keyPrefix . $resource->getSha1()));
+            return true;
+        } else {
+            $this->systemLogger->error(sprintf('Could not delete resource with key "%s" from bucket "%s". Details: %s', $this->bucketName, $this->keyPrefix . $resource->getSha1(), json_encode($result)), LogEnvironment::fromMethodName(__METHOD__));
+            return false;
+        }
     }
 
     /**
