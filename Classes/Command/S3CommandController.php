@@ -56,7 +56,7 @@ class S3CommandController extends CommandController
      * @param string $prefix
      * @return void
      */
-    public function connectCommand(string $bucket = null, string $prefix = ''): void
+    public function connectCommand(?string $bucket = null, string $prefix = ''): void
     {
         try {
             if ($bucket !== null) {
