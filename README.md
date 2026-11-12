@@ -362,6 +362,64 @@ Neos:
             acl: ''
 ```
 
+## Excluded Files
+
+Like Flow's `FileSystemTarget`, the S3 Target can refuse to publish files with certain filename extensions. This
+prevents, for example, uploaded PHP or HTML files from becoming publicly accessible in the target bucket. Files whose
+name starts with a dot (for example `.htaccess`) are never published, regardless of the configuration. Such resources
+are not uploaded, copied or (in a one-bucket setup) made public; when publishing a single resource an exception is
+thrown, when publishing a whole collection the file is skipped and a warning is logged.
+
+```yaml
+Neos:
+  Flow:
+    resource:
+      targets:
+        s3PersistentResourcesTarget:
+          target: 'Flownative\Aws\S3\S3Target'
+          targetOptions:
+            excludedExtensions:
+              'xml': true
+              'csv': true
+```
+
+Extensions are compared case-insensitively. The configured extensions are merged with the defaults. Flow's default
+list can be found in the setting `Neos.Flow.resource.extensionsBlockedFromUpload`.
+
+**The package has a list of default exclusions** matching Flow's list (at the time of writing):
+
+- aspx
+- cgi
+- phar
+- php
+- php3
+- php4
+- php5
+- php7
+- phtml
+- pl
+- py
+- pyc
+- pyo
+- rb
+- html
+- htm
+- shtml
+
+In case you really want to allow publishing of such an extension, revert the setting:
+
+```yaml
+Neos:
+  Flow:
+    resource:
+      targets:
+        s3PersistentResourcesTarget:
+          target: 'Flownative\Aws\S3\S3Target'
+          targetOptions:
+            excludedExtensions:
+              'html': false
+```
+
 ## Full Example Configuration for S3
 
 ```yaml
