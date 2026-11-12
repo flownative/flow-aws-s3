@@ -10,6 +10,7 @@ namespace Flownative\Aws\S3;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use GuzzleHttp\Psr7\Uri;
+use Neos\Error\Messages\Message;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Log\Utility\LogEnvironment;
 use Neos\Flow\ResourceManagement\CollectionInterface;
@@ -20,7 +21,9 @@ use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Flow\ResourceManagement\ResourceMetaDataInterface;
 use Neos\Flow\ResourceManagement\Storage\StorageInterface;
 use Neos\Flow\ResourceManagement\Storage\StorageObject;
+use Neos\Flow\ResourceManagement\Target\Exception as TargetException;
 use Neos\Flow\ResourceManagement\Target\TargetInterface;
+use Neos\Utility\Unicode\Functions as UnicodeFunctions;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -88,6 +91,31 @@ class S3Target implements TargetInterface
      * @var bool
      */
     protected $unpublishResources = true;
+
+    /**
+     * A list of extensions that are excluded and must not be published by this target.
+     *
+     * @var array<string, bool>
+     */
+    protected $excludedExtensions = [
+        'aspx' => true,
+        'cgi' => true,
+        'phar' => true,
+        'php' => true,
+        'php3' => true,
+        'php4' => true,
+        'php5' => true,
+        'php7' => true,
+        'phtml' => true,
+        'pl' => true,
+        'py' => true,
+        'pyc' => true,
+        'pyo' => true,
+        'rb' => true,
+        'html' => true,
+        'htm' => true,
+        'shtml' => true,
+    ];
 
     /**
      * Internal cache for known storages, indexed by storage name
@@ -185,6 +213,12 @@ class S3Target implements TargetInterface
                                 }
                         }
                     }
+                    break;
+                case 'excludedExtensions':
+                    if (!is_array($value)) {
+                        throw new Exception(sprintf('The option "%s" which was specified in the configuration of the "%s" resource S3Target is not a valid array. Please check your settings.', $key, $name), 1794498324);
+                    }
+                    $this->excludedExtensions = array_merge($this->excludedExtensions, array_change_key_case($value, CASE_LOWER));
                     break;
                 default:
                     if ($value !== null) {
@@ -284,6 +318,12 @@ class S3Target implements TargetInterface
             $iteration = 0;
             foreach ($collection->getObjects($callback) as $object) {
                 /** @var StorageObject $object */
+                try {
+                    $this->assertFileMayBePublished($this->getRelativePublicationPathAndFilename($object));
+                } catch (TargetException $e) {
+                    $this->messageCollector->append($e->getMessage(), Message::SEVERITY_WARNING, $e->getCode());
+                    continue;
+                }
                 $this->publishFile($object->getStream(), $this->getRelativePublicationPathAndFilename($object), $object);
                 $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
                 $potentiallyObsoleteObjects[$objectName] = false;
@@ -319,6 +359,12 @@ class S3Target implements TargetInterface
     {
         foreach ($collection->getObjects($callback) as $object) {
             /** @var StorageObject $object */
+            try {
+                $this->assertFileMayBePublished($this->getRelativePublicationPathAndFilename($object));
+            } catch (TargetException $e) {
+                $this->messageCollector->append($e->getMessage(), Message::SEVERITY_WARNING, $e->getCode());
+                continue;
+            }
             $objectName = $this->keyPrefix . $this->getRelativePublicationPathAndFilename($object);
             if (array_key_exists($objectName, $potentiallyObsoleteObjects)) {
                 $this->systemLogger->debug(sprintf('The resource object "%s" (SHA1: %s) has already been published to bucket "%s", no need to re-publish', $objectName, $object->getSha1() ?: 'unknown', $this->bucketName));
@@ -364,6 +410,8 @@ class S3Target implements TargetInterface
      */
     public function publishResource(PersistentResource $resource, CollectionInterface $collection)
     {
+        $this->assertFileMayBePublished($this->getRelativePublicationPathAndFilename($resource));
+
         $storage = $collection->getStorage();
         if ($storage instanceof S3Storage) {
             if ($storage->getBucketName() === $this->bucketName && $storage->getKeyPrefix() === $this->keyPrefix) {
@@ -512,6 +560,8 @@ class S3Target implements TargetInterface
      */
     protected function publishFile($sourceStream, string $relativeTargetPathAndFilename, ResourceMetaDataInterface $metaData): void
     {
+        $this->assertFileMayBePublished($relativeTargetPathAndFilename);
+
         $objectName = $this->keyPrefix . $relativeTargetPathAndFilename;
         $options = [
             'params' => [
@@ -529,6 +579,28 @@ class S3Target implements TargetInterface
                 fclose($sourceStream);
             }
             throw $e;
+        }
+    }
+
+    /**
+     * Throws an exception if the given file must not be published by this target: either because its filename
+     * starts with a dot (for example ".htaccess") or because its extension is configured as excluded.
+     *
+     * @param string $relativeTargetPathAndFilename
+     * @throws TargetException
+     */
+    protected function assertFileMayBePublished(string $relativeTargetPathAndFilename): void
+    {
+        $pathInfo = UnicodeFunctions::pathinfo($relativeTargetPathAndFilename);
+        if (strpos($pathInfo['basename'] ?? '', '.') === 0) {
+            throw new TargetException(sprintf('Could not publish "%s" into resource publishing target "%s" because filenames starting with a dot are not allowed.', $relativeTargetPathAndFilename, $this->name), 1794498326);
+        }
+        if (!isset($pathInfo['extension'])) {
+            return;
+        }
+        $extension = strtolower($pathInfo['extension']);
+        if (($this->excludedExtensions[$extension] ?? false) === true) {
+            throw new TargetException(sprintf('Could not publish "%s" into resource publishing target "%s" because the filename extension "%s" is excluded.', $relativeTargetPathAndFilename, $this->name, $extension), 1794498325);
         }
     }
 
